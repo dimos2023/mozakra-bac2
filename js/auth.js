@@ -94,7 +94,12 @@ export async function verifyAccess(user) {
     console.warn("تعذّر تسجيل الدخول في users:", e.code || e.message);
   }
 
-  return { ok: true, role, name: data.name || user.displayName || email.split("@")[0] };
+  return {
+    ok: true,
+    role,
+    groupId: data.groupId || "",
+    name: data.name || user.displayName || email.split("@")[0]
+  };
 }
 
 export { onAuthStateChanged };

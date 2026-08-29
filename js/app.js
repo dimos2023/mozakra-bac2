@@ -6,11 +6,14 @@ import {
   auth, signIn, signOutNow, catchRedirect, verifyAccess, onAuthStateChanged
 } from "./auth.js";
 import {
-  loadSessions, loadProgress, saveProgress, flushProgress, loadStudents, clearCache
+  loadSessions, loadProgress, saveProgress, flushProgress, loadStudents, clearCache,
+  loadGroups, createGroup, renameGroup, deleteGroup,
+  loadMyRequest, submitRequest, loadRequests, approveRequest, rejectRequest, deleteRequest,
+  setStudentGroup, setStudentActive, removeStudent
 } from "./store.js";
 import {
-  UNITS, renderSession, renderSearch, renderBank, renderStudents,
-  buildIndex, search, studentsCSV, escapeHTML
+  UNITS, renderSession, renderSearch, renderBank, renderStudents, renderAdmin,
+  buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
 /* ---------------- الحالة ---------------- */
@@ -22,12 +25,16 @@ const state = {
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
-  view: "session",        // session | search | bank | students
+  view: "session",        // session | search | bank | students | admin
   current: 1,
   teacherMode: false,
   answersOpen: false,
   bankFilter: { unit: "all", type: "all" },
   students: null,
+  requests: null,
+  groups: [],
+  groupFilter: "all",
+  myGroup: "",
   searchTerm: ""
 };
 
@@ -42,14 +49,65 @@ const el = {
 /* ---------------- شاشة الدخول ---------------- */
 
 const GATE_MSG = {
-  "not-listed": email =>
-    `حسابك <span class="mail">${escapeHTML(email)}</span> غير مسجَّل في قائمة الطلبة.<br>
-     كلّم المدرس عشان يضيفك، أو جرّب حسابًا آخر.`,
   "disabled": () => "حسابك موقوف حاليًا. كلّم المدرس لإعادة تفعيله.",
   "unverified": () => "إيميل حسابك غير مُوثَّق من جوجل. وثّقه ثم أعد المحاولة.",
   "no-email": () => "تعذّر قراءة الإيميل من حساب جوجل.",
-  "denied": () => "تم رفض الوصول. تأكد أنك تستخدم الحساب المسجَّل لدى المدرس."
+  "denied": () => "تم رفض الوصول. جرّب تسجيل الخروج والدخول تاني."
 };
+
+/** الزائر غير المسجَّل: يعرض فورم طلب انضمام أو حالة طلبه القائم. */
+async function showJoinFlow(user) {
+  gateWaiting("جارٍ التحميل…");
+
+  const [groups, existing] = await Promise.all([loadGroups(), loadMyRequest(user.uid)]);
+
+  if (existing && existing.status === "pending") {
+    el.gateBody.innerHTML = pendingHTML(existing, groups) +
+      '<button class="linkish" type="button" id="retryBtn">تسجيل الدخول بحساب آخر</button>';
+    bindRetry();
+    $("jRecheck").addEventListener("click", () => location.reload());
+    return;
+  }
+
+  el.gateBody.innerHTML = joinFormHTML(user, groups, existing) +
+    '<button class="linkish" type="button" id="retryBtn">تسجيل الدخول بحساب آخر</button>';
+  bindRetry();
+
+  const send = $("jSend");
+  send.addEventListener("click", async () => {
+    const name = $("jName").value.trim();
+    const err  = $("jErr");
+    if (name.length < 3) {
+      err.textContent = "اكتب اسمك بالكامل من فضلك.";
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    send.disabled = true;
+    send.textContent = "جارٍ الإرسال…";
+    try {
+      await submitRequest(user, {
+        name,
+        groupId: $("jGroup")?.value || "",
+        note: $("jNote").value
+      });
+      await showJoinFlow(user);
+    } catch (e) {
+      err.textContent = "تعذّر إرسال الطلب: " + (e.code || e.message);
+      err.hidden = false;
+      send.disabled = false;
+      send.textContent = "إرسال طلب الانضمام";
+    }
+  });
+}
+
+function bindRetry() {
+  const r = $("retryBtn");
+  if (r) r.addEventListener("click", async () => {
+    await signOutNow().catch(() => {});
+    resetGate();
+  });
+}
 
 function gateMessage(kind, html, showRetry = true) {
   el.gateBody.innerHTML =
@@ -113,7 +171,8 @@ function renderMe() {
     <div class="who">
       <div class="nm">${escapeHTML(state.name)}</div>
       <div class="rl${state.role === "teacher" ? " t" : ""}">${
-        state.role === "teacher" ? "مدرس" : "طالب"}</div>
+        state.role === "teacher" ? "مدرس"
+          : (state.groups.find(g => g.id === state.myGroup)?.name || "طالب")}</div>
     </div>
     <button class="iconbtn" type="button" id="signoutBtn" title="تسجيل الخروج" aria-label="تسجيل الخروج">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
@@ -212,9 +271,31 @@ function draw() {
       });
       return;
     }
-    el.main.innerHTML = renderStudents(state.students, state.sessions.length);
+    el.main.innerHTML = renderStudents(state.students, state.sessions.length,
+                                       state.groups, state.groupFilter);
+  } else if (state.view === "admin") {
+    if (!state.requests) {
+      el.main.innerHTML = '<div class="empty">جارٍ تحميل الطلبات…</div>';
+      Promise.all([loadRequests(), loadGroups(), state.students ? state.students : loadStudents()])
+        .then(([reqs, groups, students]) => {
+          state.requests = reqs;
+          state.groups = groups;
+          state.students = students;
+          if (state.view === "admin") draw();
+        })
+        .catch(e => {
+          el.main.innerHTML = `<div class="empty">تعذّر التحميل: ${escapeHTML(e.code || e.message)}</div>`;
+        });
+      return;
+    }
+    const counts = {};
+    (state.students || []).forEach(s => {
+      if (s.groupId) counts[s.groupId] = (counts[s.groupId] || 0) + 1;
+    });
+    el.main.innerHTML = renderAdmin(state.requests, state.groups, counts);
   }
   markNav();
+  updateBadge();
 }
 
 /** يضيف زر تبديل وضع المدرس/الطالب في شريط أدوات الحصة. */
@@ -238,13 +319,16 @@ el.main.addEventListener("click", ev => {
 
   const f = ev.target.closest("[data-filter]");
   if (f) {
-    state.bankFilter[f.dataset.filter] = f.dataset.val;
+    if (f.dataset.filter === "group") state.groupFilter = f.dataset.val;
+    else state.bankFilter[f.dataset.filter] = f.dataset.val;
     draw();
     return;
   }
 
   const a = ev.target.closest("[data-act]");
   if (!a) return;
+
+  if (adminAction(a)) return;
 
   switch (a.dataset.act) {
     case "toggle-ans": {
@@ -281,7 +365,7 @@ el.main.addEventListener("click", ev => {
       draw();
       break;
     case "export-csv": {
-      const csv = studentsCSV(state.students || [], state.sessions.length);
+      const csv = studentsCSV(state.students || [], state.sessions.length, state.groups);
       const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
       link.href = url;
@@ -292,6 +376,118 @@ el.main.addEventListener("click", ev => {
     }
   }
 });
+
+/* ---------------- أفعال الإدارة ---------------- */
+
+/** ينفّذ أفعال صفحة الإدارة. يرجع true لو تعامل مع الحدث. */
+function adminAction(a) {
+  const act = a.dataset.act;
+  const ADMIN = ["approve", "reject", "delete-request", "add-group", "rename-group",
+                 "delete-group", "refresh-admin", "toggle-active", "remove-student"];
+  if (!ADMIN.includes(act)) return false;
+  if (state.role !== "teacher") return true;
+
+  const busy = (on, txt) => { a.disabled = on; if (txt) a.textContent = txt; };
+  const reload = () => { state.requests = null; state.students = null; draw(); };
+  const fail = e => { alert("تعذّر التنفيذ: " + (e.code || e.message)); reload(); };
+
+  switch (act) {
+    case "approve": {
+      const req = state.requests.find(r => r.uid === a.dataset.uid);
+      if (!req) return true;
+      const card = a.closest(".req");
+      const gid = card?.querySelector('[data-role="group-pick"]')?.value || "";
+      busy(true, "جارٍ القبول…");
+      approveRequest(req, { groupId: gid }).then(reload).catch(fail);
+      return true;
+    }
+    case "reject": {
+      const req = state.requests.find(r => r.uid === a.dataset.uid);
+      if (!req) return true;
+      if (!confirm(`رفض طلب ${req.name || req.email}؟`)) return true;
+      busy(true, "…");
+      rejectRequest(req).then(reload).catch(fail);
+      return true;
+    }
+    case "delete-request":
+      if (!confirm("حذف سجل الطلب نهائيًا؟")) return true;
+      deleteRequest(a.dataset.uid).then(reload).catch(fail);
+      return true;
+
+    case "add-group": {
+      const input = $("newGroupName");
+      const name = (input?.value || "").trim();
+      if (name.length < 2) { input?.focus(); return true; }
+      busy(true, "…");
+      createGroup(name).then(reload).catch(fail);
+      return true;
+    }
+    case "rename-group": {
+      const g = state.groups.find(x => x.id === a.dataset.gid);
+      const name = prompt("الاسم الجديد للمجموعة:", g?.name || "");
+      if (name === null || !name.trim()) return true;
+      renameGroup(a.dataset.gid, name.trim()).then(reload).catch(fail);
+      return true;
+    }
+    case "delete-group": {
+      const g = state.groups.find(x => x.id === a.dataset.gid);
+      if (!confirm(`حذف مجموعة «${g?.name}»؟\nالطلبة مش هيتحذفوا — هيبقوا بدون مجموعة.`)) return true;
+      deleteGroup(a.dataset.gid).then(() => {
+        state.groups = [];
+        if (state.groupFilter === a.dataset.gid) state.groupFilter = "all";
+        reload();
+      }).catch(fail);
+      return true;
+    }
+    case "refresh-admin":
+      reload();
+      return true;
+
+    case "toggle-active": {
+      const on = a.dataset.active !== "true";
+      setStudentActive(a.dataset.email, on).then(reload).catch(fail);
+      return true;
+    }
+    case "remove-student":
+      if (!confirm(`حذف ${a.dataset.email} نهائيًا من قائمة المسموح لهم؟`)) return true;
+      removeStudent(a.dataset.email).then(reload).catch(fail);
+      return true;
+  }
+  return false;
+}
+
+// نقل طالب لمجموعة أخرى من القائمة المنسدلة
+el.main.addEventListener("change", ev => {
+  const sel = ev.target.closest('select[data-act="move-group"]');
+  if (!sel || state.role !== "teacher") return;
+  sel.disabled = true;
+  setStudentGroup(sel.dataset.email, sel.value)
+    .then(() => { state.students = null; state.requests = null; draw(); })
+    .catch(e => { alert("تعذّر النقل: " + (e.code || e.message)); sel.disabled = false; });
+});
+
+// إضافة مجموعة بالضغط على Enter
+el.main.addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && ev.target.id === "newGroupName") {
+    ev.preventDefault();
+    el.main.querySelector('[data-act="add-group"]')?.click();
+  }
+});
+
+/** يحدّث عدّاد الطلبات المعلّقة على زر الإدارة. */
+function updateBadge() {
+  const btn = document.querySelector('.link-btn[data-view="admin"]');
+  if (!btn) return;
+  const n = (state.requests || []).filter(r => r.status === "pending").length;
+  let dot = btn.querySelector(".badge-n");
+  if (!n) { dot?.remove(); return; }
+  if (!dot) {
+    dot = document.createElement("span");
+    dot.className = "badge-n";
+    btn.appendChild(dot);
+  }
+  dot.textContent = n;
+}
 
 el.main.addEventListener("keydown", ev => {
   if (ev.key !== "Enter" && ev.key !== " ") return;
@@ -338,16 +534,21 @@ async function boot(user) {
 
   const res = await verifyAccess(user);
   if (!res.ok) {
-    const build = GATE_MSG[res.reason] || GATE_MSG.denied;
-    gateMessage("err", build(user.email || ""));
     el.boot.hidden = true;
     el.gate.hidden = false;
+    // غير مسجَّل → فورم طلب انضمام بدل الرفض
+    if (res.reason === "not-listed") {
+      await showJoinFlow(user);
+    } else {
+      gateMessage("err", (GATE_MSG[res.reason] || GATE_MSG.denied)(user.email || ""));
+    }
     return;
   }
 
   state.user = user;
   state.role = res.role;
   state.name = res.name;
+  state.myGroup = res.groupId || "";
   state.teacherMode = res.role === "teacher";
   try {
     const saved = localStorage.getItem("memo:teacherMode");
@@ -381,6 +582,14 @@ async function boot(user) {
     : (state.sessions.some(s => s.n === state.progress.lastSession) ? state.progress.lastSession : 1);
 
   document.querySelectorAll(".teacher-only").forEach(x => { x.hidden = state.role !== "teacher"; });
+
+  // المجموعات: المدرس يحتاجها للإدارة، والطالب لعرض اسم مجموعته
+  state.groups = await loadGroups();
+
+  if (state.role === "teacher") {
+    // نجلب الطلبات في الخلفية عشان يظهر عدّاد المعلّقة فورًا
+    loadRequests().then(r => { state.requests = r; updateBadge(); }).catch(() => {});
+  }
 
   renderMe();
   renderNav();

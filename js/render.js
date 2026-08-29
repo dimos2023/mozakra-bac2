@@ -265,10 +265,114 @@ export function renderBank(sessions, filter) {
   return h;
 }
 
+/* ---------------- صفحة الإدارة: الطلبات والمجموعات ---------------- */
+
+function groupOptions(groups, selected, includeNone = true) {
+  return (includeNone ? `<option value=""${selected ? "" : " selected"}>— بدون مجموعة —</option>` : "") +
+    groups.map(g =>
+      `<option value="${escapeHTML(g.id)}"${g.id === selected ? " selected" : ""}>${escapeHTML(g.name)}</option>`
+    ).join("");
+}
+
+export function renderAdmin(requests, groups, counts) {
+  const pending  = requests.filter(r => r.status === "pending");
+  const decided  = requests.filter(r => r.status !== "pending");
+
+  let h = `<header class="page-head"><h2>طلبات الانضمام والمجموعات</h2>
+    <p>الطلبة اللي سجّلوا دخول ومستنيين موافقتك، وتنظيم مجموعاتك.</p></header>`;
+
+  h += `<div class="topbar no-print"><span class="spacer"></span>
+    <button class="tbtn" type="button" data-act="refresh-admin">تحديث</button></div>`;
+
+  /* --- الطلبات المعلّقة --- */
+  h += `<section class="blk"><div class="blabel">طلبات في الانتظار ${
+    pending.length ? `(${pending.length})` : ""}</div>`;
+
+  if (!pending.length) {
+    h += '<div class="empty">مفيش طلبات جديدة دلوقتي.</div>';
+  } else {
+    h += pending.map(r => {
+      const wanted = groups.find(g => g.id === r.groupId);
+      return `<div class="req" data-uid="${escapeHTML(r.uid)}">
+        <div class="req-who">
+          ${r.photo
+            ? `<img src="${escapeHTML(r.photo)}" alt="" referrerpolicy="no-referrer">`
+            : `<span class="avatar">${escapeHTML((r.name || "؟").charAt(0))}</span>`}
+          <div>
+            <div class="req-nm">${escapeHTML(r.name || "—")}</div>
+            <div class="req-ml"><span class="en">${escapeHTML(r.email)}</span></div>
+            ${r.createdAtDate ? `<div class="req-dt">${fmtDate(r.createdAtDate)}</div>` : ""}
+          </div>
+        </div>
+        ${r.note ? `<div class="req-note">${escapeHTML(r.note)}</div>` : ""}
+        ${wanted ? `<div class="req-want">طلب الانضمام لـ <b>${escapeHTML(wanted.name)}</b></div>` : ""}
+        <div class="req-act">
+          <label class="sel">
+            <span>المجموعة</span>
+            <select data-role="group-pick">${groupOptions(groups, r.groupId)}</select>
+          </label>
+          <button class="tbtn ok"  type="button" data-act="approve" data-uid="${escapeHTML(r.uid)}">قبول</button>
+          <button class="tbtn bad" type="button" data-act="reject"  data-uid="${escapeHTML(r.uid)}">رفض</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  h += "</section>";
+
+  /* --- المجموعات --- */
+  h += `<section class="blk"><div class="blabel">المجموعات</div>`;
+  h += `<div class="newgrp no-print">
+    <input type="text" id="newGroupName" placeholder="اسم المجموعة — مثلاً: مجموعة السبت 10ص" maxlength="60">
+    <button class="tbtn" type="button" data-act="add-group">إضافة مجموعة</button>
+  </div>`;
+
+  if (!groups.length) {
+    h += '<div class="empty">لسه مفيش مجموعات. أضف واحدة فوق عشان توزّع عليها الطلبة.</div>';
+  } else {
+    h += '<div class="grps">' + groups.map(g => `
+      <div class="grp" data-gid="${escapeHTML(g.id)}">
+        <div class="grp-nm">${escapeHTML(g.name)}</div>
+        <div class="grp-ct">${counts[g.id] || 0} طالب</div>
+        <div class="grp-act no-print">
+          <button class="iconbtn" type="button" data-act="rename-group" data-gid="${escapeHTML(g.id)}"
+                  title="إعادة تسمية" aria-label="إعادة تسمية">✎</button>
+          <button class="iconbtn danger" type="button" data-act="delete-group" data-gid="${escapeHTML(g.id)}"
+                  title="حذف" aria-label="حذف">✕</button>
+        </div>
+      </div>`).join("") + "</div>";
+  }
+  h += "</section>";
+
+  /* --- الطلبات المنتهية --- */
+  if (decided.length) {
+    h += `<section class="blk"><div class="blabel">طلبات سابقة</div><div class="tw"><table>
+      <caption>آخر ${Math.min(decided.length, 25)} طلب</caption>
+      <thead><tr><th>الاسم</th><th>الإيميل</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>`;
+    decided.slice(0, 25).forEach(r => {
+      h += `<tr>
+        <td>${escapeHTML(r.name || "—")}</td>
+        <td><span class="en">${escapeHTML(r.email)}</span></td>
+        <td><span class="badge ${r.status}">${r.status === "approved" ? "مقبول" : "مرفوض"}</span></td>
+        <td class="num">${r.createdAtDate ? fmtDate(r.createdAtDate) : "—"}</td>
+        <td class="no-print"><button class="iconbtn danger" type="button"
+             data-act="delete-request" data-uid="${escapeHTML(r.uid)}" title="حذف السجل">✕</button></td>
+      </tr>`;
+    });
+    h += "</tbody></table></div></section>";
+  }
+
+  return h;
+}
+
 /* ---------------- متابعة الطلبة (للمدرس) ---------------- */
 
-export function renderStudents(rows, totalSessions) {
-  const students = rows.filter(r => r.role === "student");
+export function renderStudents(rows, totalSessions, groups = [], filterGroup = "all") {
+  const gname = id => groups.find(g => g.id === id)?.name || "";
+  const shown = rows.filter(r =>
+    filterGroup === "all" ? true :
+    filterGroup === "none" ? !r.groupId : r.groupId === filterGroup);
+
+  const students = shown.filter(r => r.role === "student");
   const active = students.filter(r => r.loginCount > 0).length;
   const avg = students.length
     ? Math.round(students.reduce((a, r) => a + r.completed, 0) / students.length * 10) / 10
@@ -278,33 +382,57 @@ export function renderStudents(rows, totalSessions) {
     <p>مين دخل، وإمتى، وفين وصل في المذكرة.</p></header>`;
 
   h += `<div class="stats">
-    <div class="stat"><div class="sv">${students.length}</div><div class="sl">طالب مسجَّل</div></div>
-    <div class="stat"><div class="sv">${active}</div><div class="sl">دخل الموقع مرة على الأقل</div></div>
+    <div class="stat"><div class="sv">${students.length}</div><div class="sl">طالب${
+      filterGroup === "all" ? " مسجَّل" : " في المجموعة"}</div></div>
+    <div class="stat"><div class="sv">${active}</div><div class="sl">دخل مرة على الأقل</div></div>
     <div class="stat"><div class="sv">${students.length - active}</div><div class="sl">لم يدخل بعد</div></div>
     <div class="stat"><div class="sv">${avg}</div><div class="sl">متوسط الحصص المنجزة</div></div>
   </div>`;
+
+  if (groups.length) {
+    h += '<div class="filters no-print"><span class="chip">المجموعة</span>';
+    h += `<button class="fbtn" type="button" data-filter="group" data-val="all"
+            aria-pressed="${filterGroup === "all"}">الكل</button>`;
+    groups.forEach(g => {
+      h += `<button class="fbtn" type="button" data-filter="group" data-val="${escapeHTML(g.id)}"
+              aria-pressed="${filterGroup === g.id}">${escapeHTML(g.name)}</button>`;
+    });
+    h += `<button class="fbtn" type="button" data-filter="group" data-val="none"
+            aria-pressed="${filterGroup === "none"}">بدون مجموعة</button></div>`;
+  }
 
   h += `<div class="topbar no-print"><span class="spacer"></span>
     <button class="tbtn" type="button" data-act="refresh-students">تحديث</button>
     <button class="tbtn" type="button" data-act="export-csv">تصدير CSV</button>
     <button class="tbtn" type="button" data-act="print">طباعة / PDF</button></div>`;
 
-  if (!rows.length) return h + '<div class="empty">قائمة المسموح لهم فارغة. شغّل سكربت seed لإضافة الطلبة.</div>';
+  if (!shown.length) {
+    return h + '<div class="empty">مفيش طلبة هنا. لما طالب يسجّل دخول هيظهر طلبه في صفحة «طلبات الانضمام».</div>';
+  }
 
-  h += `<div class="tw"><table><caption>الطلبة وقائمة المسموح لهم</caption><thead><tr>
-    <th>الاسم</th><th>الإيميل</th><th>الدور</th><th>آخر دخول</th>
-    <th>مرات الدخول</th><th>التقدّم</th></tr></thead><tbody>`;
+  h += `<div class="tw"><table><caption>الطلبة${
+    filterGroup !== "all" && filterGroup !== "none" ? " — " + escapeHTML(gname(filterGroup)) : ""
+  }</caption><thead><tr>
+    <th>الاسم</th><th>الإيميل</th><th>المجموعة</th><th>آخر دخول</th>
+    <th>الدخول</th><th>التقدّم</th><th class="no-print"></th></tr></thead><tbody>`;
 
-  rows.forEach(r => {
+  shown.forEach(r => {
     const pct = totalSessions ? Math.round(r.completed / totalSessions * 100) : 0;
-    h += `<tr>
-      <td>${escapeHTML(r.name)}${r.active ? "" : ' <span class="hit-k">(موقوف)</span>'}</td>
+    h += `<tr data-email="${escapeHTML(r.email)}">
+      <td>${escapeHTML(r.name)}${r.role === "teacher" ? ' <span class="badge t">مدرس</span>' : ""}${
+        r.active ? "" : ' <span class="badge off">موقوف</span>'}</td>
       <td><span class="en">${escapeHTML(r.email)}</span></td>
-      <td>${r.role === "teacher" ? "مدرس" : "طالب"}</td>
+      <td class="no-print"><select class="gsel" data-act="move-group" data-email="${escapeHTML(r.email)}"
+           ${r.role === "teacher" ? "disabled" : ""}>${groupOptions(groups, r.groupId)}</select></td>
       <td class="num">${r.lastLogin ? fmtDate(r.lastLogin) : "—"}</td>
       <td class="num">${r.loginCount || 0}</td>
       <td><span class="num">${r.completed} / ${totalSessions}</span>
         <span class="mini-bar"><span style="width:${pct}%"></span></span></td>
+      <td class="no-print">${r.role === "teacher" ? "" :
+        `<button class="iconbtn" type="button" data-act="toggle-active" data-email="${escapeHTML(r.email)}"
+                 data-active="${r.active}" title="${r.active ? "إيقاف" : "تفعيل"}">${r.active ? "⏸" : "▶"}</button>
+         <button class="iconbtn danger" type="button" data-act="remove-student" data-email="${escapeHTML(r.email)}"
+                 title="حذف نهائي">✕</button>`}</td>
     </tr>`;
   });
 
@@ -316,14 +444,66 @@ function fmtDate(d) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function studentsCSV(rows, totalSessions) {
-  const head = ["name", "email", "role", "active", "lastLogin", "loginCount", "completed", "total"];
+export function studentsCSV(rows, totalSessions, groups = []) {
+  const gname = id => groups.find(g => g.id === id)?.name || "";
+  const head = ["name", "email", "role", "group", "active", "lastLogin", "loginCount", "completed", "total"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = [head.join(",")];
   rows.forEach(r => lines.push([
-    r.name, r.email, r.role, r.active ? "yes" : "no",
+    r.name, r.email, r.role, gname(r.groupId), r.active ? "yes" : "no",
     r.lastLogin ? r.lastLogin.toISOString() : "", r.loginCount || 0,
     r.completed, totalSessions
   ].map(esc).join(",")));
   return "﻿" + lines.join("\r\n");
+}
+
+/* ---------------- فورم طلب الانضمام (شاشة الدخول) ---------------- */
+
+export function joinFormHTML(user, groups, existing) {
+  const name = existing?.name || user.displayName || "";
+  const note = existing?.note || "";
+  const gid  = existing?.groupId || "";
+  const resubmit = existing?.status === "rejected";
+
+  return `
+    ${resubmit ? '<div class="gate-msg err">طلبك السابق اترفض. تقدر تعدّل بياناتك وتبعت تاني.</div>' : ""}
+    <p class="gate-note">حسابك <span class="mail">${escapeHTML(user.email || "")}</span> مش مسجَّل لسه.
+       اعمل طلب انضمام والمدرس هيراجعه.</p>
+    <div class="jform">
+      <label class="fld">
+        <span>اسمك بالكامل</span>
+        <input type="text" id="jName" value="${escapeHTML(name)}" maxlength="60" placeholder="مثلاً: محمد علي حسن">
+      </label>
+      ${groups.length ? `
+      <label class="fld">
+        <span>مجموعتك</span>
+        <select id="jGroup">
+          <option value=""${gid ? "" : " selected"}>— مش متأكد / المدرس يحدد —</option>
+          ${groups.map(g => `<option value="${escapeHTML(g.id)}"${
+            g.id === gid ? " selected" : ""}>${escapeHTML(g.name)}</option>`).join("")}
+        </select>
+      </label>` : ""}
+      <label class="fld">
+        <span>ملحوظة للمدرس <em>(اختياري)</em></span>
+        <textarea id="jNote" rows="2" maxlength="300"
+                  placeholder="مثلاً: أنا من مدرسة كذا، ميعادي السبت الصبح">${escapeHTML(note)}</textarea>
+      </label>
+      <div class="jerr" id="jErr" hidden></div>
+      <button class="gbtn primary" type="button" id="jSend">${resubmit ? "إعادة إرسال الطلب" : "إرسال طلب الانضمام"}</button>
+    </div>`;
+}
+
+export function pendingHTML(req, groups) {
+  const g = groups.find(x => x.id === req.groupId);
+  return `
+    <div class="gate-msg wait">
+      <b>طلبك وصل للمدرس ومستني الموافقة.</b><br>
+      هتقدر تدخل أول ما يوافق — جرّب تحدّث الصفحة بعدين.
+    </div>
+    <div class="jsum">
+      <div><span>الاسم</span><b>${escapeHTML(req.name || "—")}</b></div>
+      <div><span>الإيميل</span><b class="mail">${escapeHTML(req.email)}</b></div>
+      ${g ? `<div><span>المجموعة</span><b>${escapeHTML(g.name)}</b></div>` : ""}
+    </div>
+    <button class="gbtn" type="button" id="jRecheck">تحقّق دلوقتي</button>`;
 }

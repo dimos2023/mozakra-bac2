@@ -3,7 +3,8 @@
 // ============================================================
 
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp
+  collection, query, where, getDocs, doc, getDoc, setDoc, addDoc,
+  updateDoc, deleteDoc, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { db } from "./auth.js";
@@ -110,6 +111,122 @@ export async function flushProgress() {
 // نحاول الحفظ قبل إغلاق الصفحة
 addEventListener("pagehide", () => { flushProgress(); });
 
+/* ---------------- المجموعات ---------------- */
+
+/** يجلب كل المجموعات مرتّبة بالاسم. متاح لأي مستخدم مسجّل (لاختيارها في الطلب). */
+export async function loadGroups() {
+  try {
+    const snap = await getDocs(collection(db, "groups"));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ar"));
+  } catch {
+    return [];
+  }
+}
+
+export async function createGroup(name, note = "") {
+  const ref = await addDoc(collection(db, "groups"), {
+    name: String(name).trim(),
+    note: String(note).trim(),
+    createdAt: serverTimestamp()
+  });
+  return ref.id;
+}
+
+export function renameGroup(gid, name, note = "") {
+  return updateDoc(doc(db, "groups", gid), { name: String(name).trim(), note: String(note).trim() });
+}
+
+/** يحذف المجموعة ويفكّ ارتباط طلبتها (لا يحذف الطلبة أنفسهم). */
+export async function deleteGroup(gid) {
+  const snap = await getDocs(query(collection(db, "allowlist"), where("groupId", "==", gid)));
+  const batch = writeBatch(db);
+  snap.forEach(d => batch.update(d.ref, { groupId: "" }));
+  batch.delete(doc(db, "groups", gid));
+  await batch.commit();
+  return snap.size;
+}
+
+/* ---------------- طلبات الانضمام ---------------- */
+
+/** يقرأ طلب المستخدم الحالي إن وُجد. */
+export async function loadMyRequest(uid) {
+  try {
+    const snap = await getDoc(doc(db, "requests", uid));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** ينشئ أو يعيد إرسال طلب انضمام. الحالة دائمًا pending. */
+export function submitRequest(user, { name, groupId = "", note = "" }) {
+  return setDoc(doc(db, "requests", user.uid), {
+    email: (user.email || "").toLowerCase(),
+    name: String(name).trim(),
+    photo: user.photoURL || "",
+    groupId,
+    note: String(note).trim().slice(0, 300),
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+}
+
+/** يجلب كل الطلبات — للمدرس فقط. */
+export async function loadRequests() {
+  const snap = await getDocs(collection(db, "requests"));
+  return snap.docs
+    .map(d => ({ uid: d.id, ...d.data(), createdAtDate: d.data().createdAt?.toDate?.() || null }))
+    .sort((a, b) => (b.createdAtDate?.getTime() || 0) - (a.createdAtDate?.getTime() || 0));
+}
+
+/** يقبل الطلب: يضيف الطالب لقائمة المسموح لهم ويعلّم الطلب كمقبول. */
+export async function approveRequest(req, { groupId = "", role = "student" } = {}) {
+  const email = String(req.email).toLowerCase();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "allowlist", email), {
+    name: req.name || email.split("@")[0],
+    role,
+    active: true,
+    groupId
+  }, { merge: true });
+  batch.update(doc(db, "requests", req.uid), {
+    status: "approved",
+    groupId,
+    decidedAt: serverTimestamp()
+  });
+  await batch.commit();
+}
+
+export function rejectRequest(req) {
+  return updateDoc(doc(db, "requests", req.uid), {
+    status: "rejected",
+    decidedAt: serverTimestamp()
+  });
+}
+
+export function deleteRequest(uid) {
+  return deleteDoc(doc(db, "requests", uid));
+}
+
+/* ---------------- إدارة الطلبة ---------------- */
+
+/** ينقل طالبًا لمجموعة أخرى. */
+export function setStudentGroup(email, groupId) {
+  return updateDoc(doc(db, "allowlist", String(email).toLowerCase()), { groupId });
+}
+
+/** يوقف أو يفعّل طالبًا. */
+export function setStudentActive(email, active) {
+  return updateDoc(doc(db, "allowlist", String(email).toLowerCase()), { active: !!active });
+}
+
+/** يحذف طالبًا من قائمة المسموح لهم نهائيًا. */
+export function removeStudent(email) {
+  return deleteDoc(doc(db, "allowlist", String(email).toLowerCase()));
+}
+
 /* ---------------- بيانات المدرس ---------------- */
 
 /** يجلب قائمة الطلبة مع آخر دخول وتقدّمهم. للمدرس فقط. */
@@ -140,6 +257,7 @@ export async function loadStudents() {
       name: a.name || u?.name || email.split("@")[0],
       role: a.role === "teacher" ? "teacher" : "student",
       active: a.active !== false,
+      groupId: a.groupId || "",
       lastLogin: u?.lastLogin?.toDate?.() || null,
       loginCount: u?.loginCount || 0,
       completed: Array.isArray(p?.completed) ? p.completed.length : 0,

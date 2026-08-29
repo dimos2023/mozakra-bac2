@@ -8,9 +8,10 @@ rules_version = '2';
 //    (2) إيميله موجود في مجموعة allowlist، و
 //    (3) الحقل active في وثيقته = true
 //
-//  الكتابة في allowlist و sessions ممنوعة تمامًا من المتصفح.
-//  التعديل عليهما يتم فقط من سكربت seed/seed.js (Admin SDK)
-//  أو يدويًا من Firebase Console.
+//  الزائر غير المسجَّل يقدر يعمل *طلب انضمام* فقط (requests)،
+//  ولا يرى المحتوى حتى يوافق المدرس.
+//
+//  الكتابة في sessions ممنوعة تمامًا من المتصفح — من seed.js فقط.
 // ============================================================
 
 service cloud.firestore {
@@ -43,24 +44,51 @@ service cloud.firestore {
     }
 
     // ---------- قائمة المسموح لهم ----------
-    // الطالب يقرأ وثيقته هو فقط (عشان يعرف دوره).
-    // المدرس يقدر يستعرض القائمة كلها.
-    // الكتابة ممنوعة من المتصفح نهائيًا.
+    // الطالب يقرأ وثيقته هو فقط (عشان يعرف دوره ومجموعته).
+    // المدرس يستعرض ويعدّل ويحذف — عشان يقدر يقبل الطلبات من الموقع.
     match /allowlist/{mailId} {
       allow get:  if isSignedIn() && mailId == request.auth.token.email.lower();
       allow list: if isTeacher();
-      allow write: if false;
+
+      // المدرس لا يستطيع إلغاء صفة المدرس عن نفسه (حماية من الإقفال الذاتي)
+      allow write: if isTeacher()
+                   && !(mailId == mail() && request.resource.data.role != 'teacher')
+                   && !(mailId == mail() && request.method == 'delete');
     }
 
-    // ---------- محتوى المذكرة ----------
-    // قراءة فقط، وللمسموح لهم فقط. لا كتابة من المتصفح.
-    match /sessions/{sid} {
-      allow read:  if isAllowed();
-      allow write: if false;
+    // ---------- طلبات الانضمام ----------
+    // أي مستخدم مسجّل دخول يقدر ينشئ طلبه هو فقط، بحالة pending.
+    // لا يستطيع تغيير الحالة إلى approved — القبول من المدرس فقط.
+    match /requests/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.email == mail()
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.keys().hasOnly(
+                         ['email','name','photo','groupId','note','status','createdAt']);
+
+      // إعادة الإرسال بعد الرفض، أو تعديل الطلب أثناء الانتظار
+      allow update: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.keys().hasOnly(
+                         ['email','name','photo','groupId','note','status','createdAt']);
+
+      // المدرس يستعرض ويقرّر ويحذف
+      allow list, update, delete: if isTeacher();
+    }
+
+    // ---------- المجموعات ----------
+    // الجميع (حتى غير المقبول) يقرأ الأسماء عشان يختار مجموعته في الطلب.
+    match /groups/{gid} {
+      allow read:  if isSignedIn();
+      allow write: if isTeacher();
     }
 
     // ---------- ملفات المستخدمين (سجل الدخول) ----------
-    // كل مستخدم يكتب وثيقته هو. المدرس يقرأ الكل.
     match /users/{uid} {
       allow get:  if isAllowed() && (request.auth.uid == uid || isTeacher());
       allow list: if isTeacher();
@@ -77,11 +105,10 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly(
                          ['email','name','photo','firstLogin','lastLogin','loginCount']);
 
-      allow delete: if false;
+      allow delete: if isTeacher();
     }
 
     // ---------- تقدّم الطالب ----------
-    // كل طالب يقرأ ويكتب تقدّمه هو فقط. المدرس يقرأ الكل.
     match /progress/{uid} {
       allow get:  if isAllowed() && (request.auth.uid == uid || isTeacher());
       allow list: if isTeacher();
@@ -91,7 +118,13 @@ service cloud.firestore {
                    && request.resource.data.keys().hasOnly(
                         ['completed','lastSession','updatedAt','email']);
 
-      allow delete: if false;
+      allow delete: if isTeacher();
+    }
+
+    // ---------- محتوى المذكرة ----------
+    match /sessions/{sid} {
+      allow read:  if isAllowed();
+      allow write: if false;
     }
 
     // ---------- كل ما عدا ذلك: ممنوع ----------
