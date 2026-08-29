@@ -12,11 +12,14 @@ import {
   setStudentGroup, setStudentActive, removeStudent, watchAccess,
   watchSessions, setReleased, setReleasedBulk,
   loadBillingConfig, saveBillingConfig, billingState,
-  loadMyPayments, claimPayment, loadAllPayments, setPaymentStatus, deletePayment
+  loadMyPayments, claimPayment, loadAllPayments, setPaymentStatus, deletePayment,
+  loadAttendanceOpen, watchAttendanceOpen, setAttendanceOpen, checkIn, setAttendance,
+  loadMyAttendance, loadAllAttendance
 } from "./store.js";
 import {
   UNITS, renderSession, renderLocked, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
   renderBilling, billingBanner, claimFormHTML,
+  attendanceCard, attendanceToggle, renderAttendance, attendanceCSV,
   buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
@@ -31,7 +34,7 @@ const state = {
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
-  view: "session",        // session | search | bank | students | admin | release | billing
+  view: "session",        // session | search | bank | students | admin | release | billing | attendance
   current: 1,
   teacherMode: false,
   answersOpen: false,
@@ -42,6 +45,9 @@ const state = {
   groupFilter: "all",
   myGroup: "",
   billing: null,
+  attOpen: "",
+  myAtt: [],
+  allAtt: null,
   payments: [],
   allPayments: null,
   claiming: false,
@@ -84,7 +90,7 @@ addEventListener("resize", () => { if (!isMobile()) drawer(false); });
 /** يحدّث عنوان الشريط العلوي على الموبايل. */
 function setMobileTitle() {
   const map = { search: "نتائج البحث", bank: "بنك الأسئلة",
-                students: "متابعة الطلبة", admin: "طلبات الانضمام", release: "الحصص المتاحة" };
+                students: "متابعة الطلبة", admin: "طلبات الانضمام", release: "الحصص المتاحة", billing: "الاشتراكات", attendance: "كشف الحضور" };
   if (state.view === "session") {
     const s = state.sessions.find(x => x.n === state.current);
     el.mtitle.textContent = s ? `حصة ${s.n} · ${s.rev ? s.ref : s.title}` : "المذكرة";
@@ -345,9 +351,16 @@ function draw() {
       return;
     }
     const bill = state.role === "student" && state.billing?.enabled ? myBilling() : null;
-    const banner = bill
+    let banner = bill
       ? (state.claiming ? claimFormHTML(state.billing, bill) : billingBanner(state.billing, bill))
       : "";
+    if (state.role === "teacher") {
+      const n = (state.allAtt || []).filter(r => r.sessionId === s.id).length;
+      banner = attendanceToggle(s, state.attOpen, n) + banner;
+    } else {
+      banner = attendanceCard(s, state.attOpen === s.id,
+                              state.myAtt.find(r => r.sessionId === s.id)) + banner;
+    }
     el.main.innerHTML = banner + renderSession(s, {
       isTeacher: state.role === "teacher",
       teacherMode: state.role === "teacher" && state.teacherMode,
@@ -372,7 +385,23 @@ function draw() {
       return;
     }
     el.main.innerHTML = renderStudents(state.students, state.sessions.length,
-                                       state.groups, state.groupFilter);
+                                       state.groups, state.groupFilter,
+                                       state.allAtt || [], releasedCount());
+  } else if (state.view === "attendance") {
+    if (!state.allAtt || !state.students) {
+      el.main.innerHTML = '<div class="empty">جارٍ تحميل كشف الحضور…</div>';
+      Promise.all([loadAllAttendance(), state.students ? state.students : loadStudents()])
+        .then(([att, studs]) => {
+          state.allAtt = att;
+          state.students = studs;
+          if (state.view === "attendance") draw();
+        })
+        .catch(e => {
+          el.main.innerHTML = `<div class="empty">تعذّر التحميل: ${escapeHTML(e.code || e.message)}</div>`;
+        });
+      return;
+    }
+    el.main.innerHTML = renderAttendance(state.sessions, state.students, state.allAtt, state.attOpen);
   } else if (state.view === "billing") {
     if (!state.allPayments || !state.students) {
       el.main.innerHTML = '<div class="empty">جارٍ التحميل…</div>';
@@ -433,6 +462,9 @@ function injectModeToggle() {
 /* ---------------- الأحداث ---------------- */
 
 el.main.addEventListener("click", ev => {
+  const viewBtn = ev.target.closest("[data-view-go]");
+  if (viewBtn) { go(viewBtn.dataset.viewGo); return; }
+
   const goBtn = ev.target.closest("[data-go]");
   if (goBtn) { go("session", goBtn.dataset.go); return; }
 
@@ -447,6 +479,7 @@ el.main.addEventListener("click", ev => {
   const a = ev.target.closest("[data-act]");
   if (!a) return;
 
+  if (attendanceAction(a)) return;
   if (billingAction(a)) return;
   if (adminAction(a)) return;
 
@@ -496,6 +529,84 @@ el.main.addEventListener("click", ev => {
     }
   }
 });
+
+/* ---------------- أفعال الحضور ---------------- */
+
+function attendanceAction(a) {
+  const act = a.dataset.act;
+  if (!["check-in", "open-att", "close-att", "toggle-att", "refresh-att", "export-att"].includes(act))
+    return false;
+
+  const fail = e => alert("تعذّر التنفيذ: " + (e.code || e.message));
+
+  switch (act) {
+    /* --- الطالب --- */
+    case "check-in": {
+      const s = state.sessions.find(x => x.n === state.current);
+      if (!s) return true;
+      a.disabled = true;
+      a.textContent = "جارٍ التسجيل…";
+      checkIn(state.user, state.name, s)
+        .then(() => loadMyAttendance(state.user.uid))
+        .then(list => { state.myAtt = list; draw(); })
+        .catch(e => {
+          alert(e.code === "permission-denied"
+            ? "التسجيل اتقفل. كلّم المدرس عشان يسجّلك يدويًا."
+            : "تعذّر التسجيل: " + (e.code || e.message));
+          a.disabled = false;
+          a.textContent = "سجّل حضوري";
+        });
+      return true;
+    }
+
+    /* --- المدرس --- */
+    case "open-att":
+    case "close-att": {
+      if (state.role !== "teacher") return true;
+      a.disabled = true;
+      setAttendanceOpen(act === "open-att" ? a.dataset.id : "")
+        .then(() => { state.allAtt = null; })
+        .catch(e => { fail(e); a.disabled = false; });
+      return true;
+    }
+    case "toggle-att": {
+      if (state.role !== "teacher") return true;
+      const sid = a.dataset.sid, uid = a.dataset.uid;
+      const sess = state.sessions.find(x => x.id === sid);
+      const stu  = (state.students || []).find(x => x.uid === uid);
+      if (!sess || !stu) return true;
+      const on = a.classList.contains("on");
+      a.disabled = true;
+      setAttendance(stu, sess, !on)
+        .then(() => {
+          // نحدّث محليًا بدل إعادة تحميل الكشف كله
+          if (on) state.allAtt = state.allAtt.filter(r => r.id !== `${sid}_${uid}`);
+          else state.allAtt.push({ id: `${sid}_${uid}`, uid, sessionId: sid, n: sess.n,
+                                   name: stu.name, email: stu.email, by: "teacher", atDate: new Date() });
+          a.classList.toggle("on", !on);
+          a.textContent = !on ? "✓" : "·";
+          a.disabled = false;
+        })
+        .catch(e => { fail(e); a.disabled = false; });
+      return true;
+    }
+    case "refresh-att":
+      state.allAtt = null;
+      draw();
+      return true;
+    case "export-att": {
+      const csv = attendanceCSV(state.sessions, state.students || [], state.allAtt || []);
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "attendance.csv";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    }
+  }
+  return false;
+}
 
 /* ---------------- أفعال الاشتراك ---------------- */
 
@@ -833,7 +944,11 @@ async function boot(user) {
   // المجموعات: المدرس يحتاجها للإدارة، والطالب لعرض اسم مجموعته
   state.groups = await loadGroups();
   state.billing = await loadBillingConfig();
-  if (state.role === "student") state.payments = await loadMyPayments(user.uid);
+  state.attOpen = await loadAttendanceOpen();
+  if (state.role === "student") {
+    state.payments = await loadMyPayments(user.uid);
+    state.myAtt    = await loadMyAttendance(user.uid);
+  }
 
   if (state.role === "teacher") {
     // نجلب الطلبات في الخلفية عشان يظهر عدّاد المعلّقة فورًا
@@ -861,6 +976,13 @@ async function boot(user) {
     // نعيد الرسم لو حالة الحصة الحالية اتغيّرت أو إحنا في صفحة الفتح
     const nowLocked = state.sessions.find(x => x.n === state.current)?.locked;
     if (wasLocked !== nowLocked || state.view === "release") draw();
+  });
+
+  // نافذة الحضور لحظيًا: زر التسجيل يظهر عند الطالب فور فتحها
+  watchAttendanceOpen(openId => {
+    if (openId === state.attOpen) return;
+    state.attOpen = openId;
+    if (state.view === "session" || state.view === "attendance") draw();
   });
 
   // إلغاء الوصول لحظيًا: لو المدرس حذف الطالب أو أوقفه، يخرج فورًا

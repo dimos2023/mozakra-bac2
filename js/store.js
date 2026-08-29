@@ -99,6 +99,74 @@ export async function setReleasedBulk(sessionIds, released) {
   }
 }
 
+/* ---------------- الحضور ---------------- */
+
+/** أي حصة تسجيلها مفتوح الآن. سلسلة فارغة = مقفول. */
+export async function loadAttendanceOpen() {
+  try {
+    const snap = await getDoc(doc(db, "config", "attendance"));
+    return snap.exists() ? (snap.data().openSession || "") : "";
+  } catch { return ""; }
+}
+
+/** يراقب نافذة الحضور لحظيًا — فيظهر الزر عند الطالب فور فتحها. */
+export function watchAttendanceOpen(onChange) {
+  return onSnapshot(doc(db, "config", "attendance"),
+    snap => onChange(snap.exists() ? (snap.data().openSession || "") : ""),
+    err => console.warn("تعذّرت مراقبة الحضور:", err.code || err.message));
+}
+
+/** المدرس يفتح أو يقفل تسجيل الحضور. سلسلة فارغة = قفل. */
+export function setAttendanceOpen(sessionId) {
+  return setDoc(doc(db, "config", "attendance"),
+    { openSession: sessionId || "", changedAt: serverTimestamp() }, { merge: true });
+}
+
+/** الطالب يسجّل حضوره. القواعد ترفض لو النافذة مقفولة أو الحصة غير المفتوحة. */
+export function checkIn(user, name, session) {
+  return setDoc(doc(db, "attendance", `${session.id}_${user.uid}`), {
+    uid: user.uid,
+    email: (user.email || "").toLowerCase(),
+    name: String(name || "").trim(),
+    n: session.n,
+    sessionId: session.id,
+    at: serverTimestamp(),
+    by: "student"
+  });
+}
+
+/** المدرس يسجّل حضور طالب يدويًا أو يشيله. */
+export function setAttendance(student, session, present) {
+  const ref = doc(db, "attendance", `${session.id}_${student.uid}`);
+  if (!present) return deleteDoc(ref);
+  return setDoc(ref, {
+    uid: student.uid,
+    email: (student.email || "").toLowerCase(),
+    name: student.name || "",
+    n: session.n,
+    sessionId: session.id,
+    at: serverTimestamp(),
+    by: "teacher"
+  });
+}
+
+/** سجلات حضور الطالب الحالي. */
+export async function loadMyAttendance(uid) {
+  try {
+    const snap = await getDocs(query(collection(db, "attendance"), where("uid", "==", uid)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch { return []; }
+}
+
+/** كل سجلات الحضور — للمدرس. */
+export async function loadAllAttendance() {
+  const snap = await getDocs(collection(db, "attendance"));
+  return snap.docs.map(d => ({
+    id: d.id, ...d.data(),
+    atDate: d.data().at?.toDate?.() || null
+  }));
+}
+
 /* ---------------- الاشتراك والدفع ---------------- */
 
 export const BILLING_DEFAULTS = {

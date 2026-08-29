@@ -164,6 +164,146 @@ export function renderSession(s, ctx) {
   return h;
 }
 
+/* ---------------- الحضور ---------------- */
+
+/** بطاقة تسجيل الحضور التي يراها الطالب أعلى الحصة. */
+export function attendanceCard(session, isOpen, myRecord) {
+  if (myRecord) {
+    const t = myRecord.atDate || myRecord.at?.toDate?.();
+    return `<div class="att done no-print">
+      <div class="att-h"><span class="att-ico">✓</span>حضورك اتسجّل</div>
+      <p>حصة ${session.n}${t ? ` — الساعة ${fmtTime(t)}` : ""}${
+        myRecord.by === "teacher" ? " · سجّله المدرس" : ""}</p>
+    </div>`;
+  }
+  if (!isOpen) return "";
+  return `<div class="att open no-print">
+    <div class="att-h"><span class="att-ico">◉</span>المدرس فتح تسجيل الحضور</div>
+    <p>سجّل حضورك في <b>حصة ${session.n}</b> دلوقتي — التسجيل هيتقفل بعد شوية.</p>
+    <button class="gbtn primary" type="button" data-act="check-in">سجّل حضوري</button>
+  </div>`;
+}
+
+/** زر فتح/قفل الحضور الذي يراه المدرس داخل الحصة. */
+export function attendanceToggle(session, openId, count) {
+  const isOpen = openId === session.id;
+  const elsewhere = openId && !isOpen;
+  return `<div class="att ${isOpen ? "open" : "idle"} no-print">
+    <div class="att-h"><span class="att-ico">${isOpen ? "◉" : "○"}</span>${
+      isOpen ? `تسجيل الحضور مفتوح — سجّل ${count}` : "تسجيل الحضور مقفول"}</div>
+    <p>${isOpen
+      ? "الطلبة شايفين زر التسجيل دلوقتي. اقفله في آخر الحصة عشان محدش يسجّل بعدين."
+      : elsewhere
+        ? "التسجيل مفتوح على حصة تانية — فتحه هنا هيقفله هناك."
+        : "افتحه في أول الحصة، والطلبة الحاضرين هيسجّلوا."}</p>
+    <div class="att-act">
+      <button class="tbtn ${isOpen ? "bad" : "ok"}" type="button"
+              data-act="${isOpen ? "close-att" : "open-att"}" data-id="${escapeHTML(session.id)}">${
+        isOpen ? "اقفل التسجيل" : "افتح تسجيل الحضور"}</button>
+      <button class="tbtn" type="button" data-view-go="attendance">كشف الحضور</button>
+    </div>
+  </div>`;
+}
+
+/** صفحة الحضور: مصفوفة الطلبة × الحصص. */
+export function renderAttendance(sessions, students, records, openId) {
+  const released = sessions.filter(s => s.released);
+  const learners = students.filter(s => s.role === "student" && s.uid);
+  const key = (sid, uid) => sid + "_" + uid;
+  const map = new Set(records.map(r => key(r.sessionId, r.uid)));
+
+  const openSession = sessions.find(s => s.id === openId);
+  const todayCount = openId ? records.filter(r => r.sessionId === openId).length : 0;
+
+  let h = `<header class="page-head"><h2>كشف الحضور</h2>
+    <p>الطالب يسجّل حضوره بنفسه وقت ما تفتح التسجيل — وتقدر تعدّل أي خانة بالضغط عليها.</p></header>`;
+
+  /* --- حالة النافذة --- */
+  h += openSession
+    ? `<div class="att open no-print">
+        <div class="att-h"><span class="att-ico">◉</span>التسجيل مفتوح على حصة ${openSession.n} — سجّل ${todayCount} من ${learners.length}</div>
+        <div class="att-act">
+          <button class="tbtn bad" type="button" data-act="close-att">اقفل التسجيل</button>
+        </div></div>`
+    : `<div class="att idle no-print">
+        <div class="att-h"><span class="att-ico">○</span>التسجيل مقفول</div>
+        <p>افتحه من داخل الحصة، أو اختر حصة من هنا:</p>
+        <div class="att-act">${
+          released.slice(-6).reverse().map(s =>
+            `<button class="tbtn" type="button" data-act="open-att" data-id="${escapeHTML(s.id)}">حصة ${s.n}</button>`
+          ).join("")}</div></div>`;
+
+  if (!learners.length) return h + '<div class="empty">مفيش طلبة مسجّلين بعد.</div>';
+  if (!released.length) return h + '<div class="empty">لسه ما فتحتش أي حصة.</div>';
+
+  /* --- إحصائيات ---
+     الجدول يعرض الموقوفين أيضًا لأن حضورهم السابق سجلّ،
+     لكن الإحصائيات تُحسب على النشطين وحدهم فلا يشوّهها من خرج من الفصل. */
+  const totals = learners.map(s => released.filter(x => map.has(key(x.id, s.uid))).length);
+  const activeTotals = learners
+    .map((s, i) => ({ active: s.active !== false, t: totals[i] }))
+    .filter(x => x.active).map(x => x.t);
+  const avg = activeTotals.length
+    ? Math.round(activeTotals.reduce((a, b) => a + b, 0) / activeTotals.length * 10) / 10 : 0;
+  const perfect = activeTotals.filter(t => t === released.length).length;
+  const zero = activeTotals.filter(t => t === 0).length;
+
+  h += `<div class="stats">
+    <div class="stat"><div class="sv">${released.length}</div><div class="sl">حصة مفتوحة</div></div>
+    <div class="stat"><div class="sv">${avg}</div><div class="sl">متوسط الحضور</div></div>
+    <div class="stat"><div class="sv">${perfect}</div><div class="sl">حضروا كل الحصص</div></div>
+    <div class="stat"><div class="sv">${zero}</div><div class="sl">لم يحضروا نهائيًا</div></div>
+  </div>`;
+
+  h += `<div class="topbar no-print"><span class="spacer"></span>
+    <button class="tbtn" type="button" data-act="refresh-att">تحديث</button>
+    <button class="tbtn" type="button" data-act="export-att">تصدير CSV</button>
+    <button class="tbtn" type="button" data-act="print">طباعة</button></div>`;
+
+  /* --- المصفوفة --- */
+  h += `<div class="tw"><table class="att-grid"><caption>الحضور — اضغط أي خانة لتعديلها</caption>
+    <thead><tr><th>الطالب</th>${
+      released.map(s => `<th class="att-col" title="${escapeHTML(s.title || "")}">${s.n}</th>`).join("")
+    }<th>الإجمالي</th></tr></thead><tbody>`;
+
+  learners.forEach((st, i) => {
+    const total = totals[i];
+    const pct = released.length ? Math.round(total / released.length * 100) : 0;
+    h += `<tr><td class="att-name">${escapeHTML(st.name)}${
+      st.active ? "" : ' <span class="hit-k">(موقوف)</span>'}</td>`;
+    released.forEach(s => {
+      const on = map.has(key(s.id, st.uid));
+      h += `<td class="att-cell"><button class="attx${on ? " on" : ""}" type="button"
+        data-act="toggle-att" data-sid="${escapeHTML(s.id)}" data-uid="${escapeHTML(st.uid)}"
+        title="${escapeHTML(st.name)} — حصة ${s.n}: ${on ? "حاضر" : "غائب"}"
+        aria-label="${on ? "حاضر" : "غائب"}">${on ? "✓" : "·"}</button></td>`;
+    });
+    h += `<td class="att-total"><span class="num">${total}/${released.length}</span>
+      <span class="mini-bar"><span style="width:${pct}%"></span></span></td></tr>`;
+  });
+
+  return h + "</tbody></table></div>";
+}
+
+export function attendanceCSV(sessions, students, records) {
+  const released = sessions.filter(s => s.released);
+  const learners = students.filter(s => s.role === "student" && s.uid);
+  const map = new Set(records.map(r => r.sessionId + "_" + r.uid));
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [["name", "email", ...released.map(s => "S" + s.n), "total"].map(esc).join(",")];
+  learners.forEach(st => {
+    const cells = released.map(s => (map.has(s.id + "_" + st.uid) ? "1" : "0"));
+    lines.push([st.name, st.email, ...cells,
+      cells.filter(c => c === "1").length].map(esc).join(","));
+  });
+  return "﻿" + lines.join("\r\n");
+}
+
+function fmtTime(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 /* ---------------- الاشتراك: شريط الطالب ---------------- */
 
 /** شريط يظهر أعلى الحصة عندما يستحقّ على الطالب شهر. */
@@ -640,8 +780,11 @@ export function renderAdmin(requests, groups, counts) {
 
 /* ---------------- متابعة الطلبة (للمدرس) ---------------- */
 
-export function renderStudents(rows, totalSessions, groups = [], filterGroup = "all") {
+export function renderStudents(rows, totalSessions, groups = [], filterGroup = "all",
+                               attendance = [], releasedCount = 0) {
   const gname = id => groups.find(g => g.id === id)?.name || "";
+  const attBy = {};
+  attendance.forEach(r => { attBy[r.uid] = (attBy[r.uid] || 0) + 1; });
   const shown = rows.filter(r =>
     filterGroup === "all" ? true :
     filterGroup === "none" ? !r.groupId : r.groupId === filterGroup);
@@ -688,7 +831,7 @@ export function renderStudents(rows, totalSessions, groups = [], filterGroup = "
     filterGroup !== "all" && filterGroup !== "none" ? " — " + escapeHTML(gname(filterGroup)) : ""
   }</caption><thead><tr>
     <th>الاسم</th><th>الإيميل</th><th>المجموعة</th><th>آخر دخول</th>
-    <th>الدخول</th><th>التقدّم</th><th class="no-print"></th></tr></thead><tbody>`;
+    <th>الدخول</th><th>الحضور</th><th>التقدّم</th><th class="no-print"></th></tr></thead><tbody>`;
 
   shown.forEach(r => {
     const pct = totalSessions ? Math.round(r.completed / totalSessions * 100) : 0;
@@ -700,6 +843,7 @@ export function renderStudents(rows, totalSessions, groups = [], filterGroup = "
            ${r.role === "teacher" ? "disabled" : ""}>${groupOptions(groups, r.groupId)}</select></td>
       <td class="num">${r.lastLogin ? fmtDate(r.lastLogin) : "—"}</td>
       <td class="num">${r.loginCount || 0}</td>
+      <td class="num">${r.role === "teacher" ? "—" : `${attBy[r.uid] || 0} / ${releasedCount}`}</td>
       <td><span class="num">${r.completed} / ${totalSessions}</span>
         <span class="mini-bar"><span style="width:${pct}%"></span></span></td>
       <td class="no-print">${r.role === "teacher" ? "" :

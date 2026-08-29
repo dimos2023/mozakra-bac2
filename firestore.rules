@@ -193,6 +193,33 @@ service cloud.firestore {
       allow list, update, delete: if isTeacher();
     }
 
+    // ---------- الحضور ----------
+    // الطالب يسجّل حضوره في الحصة التي *فتح المدرس* تسجيلها فقط،
+    // فلا يستطيع تجميع حضور حصص فائتة لاحقًا.
+    function attOpen() {
+      return exists(/databases/$(database)/documents/config/attendance)
+        ? get(/databases/$(database)/documents/config/attendance).data.openSession
+        : '';
+    }
+
+    match /attendance/{aid} {
+      allow read: if isTeacher();
+      allow read: if isAllowed() && resource.data.uid == request.auth.uid;
+
+      // إنشاء فقط — لا تعديل ولا حذف من الطالب، فالسجل غير قابل للتلاعب.
+      // ولأن المعرّف = sessionId_uid، لا يمكن التسجيل مرتين لنفس الحصة.
+      allow create: if isAllowed()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == mail()
+                    && request.resource.data.by == 'student'
+                    && request.resource.data.sessionId == attOpen()
+                    && request.resource.data.keys().hasOnly(
+                         ['uid','email','name','n','sessionId','at','by']);
+
+      // المدرس يسجّل يدويًا أو يحذف
+      allow write: if isTeacher();
+    }
+
     // ---------- كل ما عدا ذلك: ممنوع ----------
     match /{document=**} {
       allow read, write: if false;

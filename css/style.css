@@ -694,3 +694,43 @@ html,body{overflow-x:hidden;}
   .bill-cell{width:100%;}
   .bill-act .tbtn{flex:1;}
 }
+
+/* ================= الحضور ================= */
+.att{border-radius:12px; padding:15px 18px; margin-bottom:18px; border:1px solid var(--line2);}
+.att-h{font-family:"Noto Kufi Arabic",sans-serif; font-size:14.5px; font-weight:600;
+  display:flex; align-items:center; gap:9px; margin-bottom:7px;}
+.att-ico{width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+  font-size:12px; font-weight:700; flex:none;}
+.att p{font-size:14px; margin:0 0 10px;} .att p:last-child{margin-bottom:0;}
+.att-act{display:flex; gap:9px; flex-wrap:wrap; margin-top:11px;}
+.att.open{background:var(--grnsoft); border-color:var(--grn); color:var(--grn);}
+.att.open .att-h{color:var(--grn);} .att.open .att-ico{background:var(--grn); color:var(--card);}
+.att.open b{color:inherit;}
+.att.done{background:var(--tealsoft); border-color:var(--teal); color:var(--tealink);}
+.att.done .att-h{color:var(--tealink);} .att.done .att-ico{background:var(--teal); color:var(--card);}
+.att.idle{background:var(--card2); border-style:dashed; color:var(--ink2);}
+.att.idle .att-h{color:var(--ink2);} .att.idle .att-ico{background:var(--line2); color:var(--card);}
+.att .gbtn.primary{background:var(--grn); border-color:var(--grn); color:var(--card);
+  font-weight:600; max-width:320px;}
+.att .gbtn.primary:hover{filter:brightness(1.08);}
+
+/* مصفوفة الحضور */
+table.att-grid{min-width:auto;}
+table.att-grid th.att-col{text-align:center; padding:9px 4px; min-width:34px;
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px;}
+td.att-cell{padding:3px; text-align:center;}
+td.att-name{white-space:nowrap; position:sticky; inset-inline-start:0; background:var(--card); z-index:1;}
+tbody tr:hover td.att-name{background:var(--card2);}
+td.att-total{white-space:nowrap; min-width:96px;}
+.attx{width:28px; height:28px; border-radius:6px; cursor:pointer; font:inherit; font-size:13px;
+  background:var(--paper); border:1px solid var(--line); color:var(--ink3); line-height:1;}
+.attx:hover{border-color:var(--teal);}
+.attx.on{background:var(--grn); border-color:var(--grn); color:var(--card); font-weight:700;}
+.attx:disabled{opacity:.5; cursor:default;}
+
+@media (max-width:900px){
+  .att{padding:13px 15px;}
+  .att-act .tbtn{flex:1;}
+  .attx{width:26px; height:26px;}
+}
+@media print{ .att{display:none;} }
