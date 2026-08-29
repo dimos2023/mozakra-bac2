@@ -18,3 +18,8 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 *.local
+
+# سجلات Firebase CLI
+firebase-debug.log*
+firestore-debug.log*
+.firebase/
