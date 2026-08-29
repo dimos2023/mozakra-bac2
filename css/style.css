@@ -652,3 +652,45 @@ html,body{overflow-x:hidden;}
 }
 .locked-when b{color:inherit;}
 .locked-card .gbtn{margin-top:10px;}
+
+/* ================= الاشتراك والدفع ================= */
+.bill{border-radius:12px; padding:16px 19px; margin-bottom:20px; border:1px solid var(--line2);}
+.bill-h{font-family:"Noto Kufi Arabic",sans-serif; font-size:14.5px; font-weight:600;
+  display:flex; align-items:center; gap:9px; margin-bottom:8px;}
+.bill-ico{width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+  font-size:12px; font-weight:700; flex:none;}
+.bill p{font-size:14px; margin:0 0 10px;}
+.bill p:last-child{margin-bottom:0;}
+.bill.due{background:var(--safsoft); border-color:var(--saf); color:var(--saf);}
+.bill.due .bill-h{color:var(--saf);} .bill.due .bill-ico{background:var(--saf); color:var(--card);}
+.bill.due b{color:inherit;}
+.bill.wait{background:var(--tealsoft); border-color:var(--teal); color:var(--tealink);}
+.bill.wait .bill-h{color:var(--tealink);} .bill.wait .bill-ico{background:var(--teal); color:var(--card);}
+.bill.ok{background:var(--grnsoft); border-color:var(--grn); color:var(--grn);}
+.bill.ok .bill-h{color:var(--grn);} .bill.ok .bill-ico{background:var(--grn); color:var(--card);}
+.bill.ok b{color:inherit;}
+
+.bill-grid{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0;}
+.bill-cell{background:var(--card); border:1px solid var(--line2); border-radius:9px;
+  padding:10px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.bill-cell span{font-size:11.5px; color:var(--ink3);}
+.bill-cell b{font-size:15px; color:var(--ink); font-weight:600;}
+.bill-cell .mail{font-family:"IBM Plex Mono",monospace; font-size:13.5px;
+  direction:ltr; unicode-bidi:isolate;}
+.bill-note{font-size:12.5px !important; opacity:.85;}
+.bill-act{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px;}
+.tbtn.tiny{padding:3px 10px; font-size:11.5px;}
+
+.card-form{background:var(--card); border:1px solid var(--line); border-radius:11px;
+  padding:18px 20px; display:grid; gap:13px; box-shadow:var(--shadow);}
+.fld-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+.fld.chk{display:flex; flex-direction:row; align-items:center; gap:9px;}
+.fld.chk input{width:auto; accent-color:var(--teal); width:17px; height:17px;}
+.fld.chk span{font-size:14px; color:var(--ink); font-weight:600;}
+
+@media (max-width:900px){
+  .bill{padding:14px 15px;}
+  .bill-grid{flex-direction:column;}
+  .bill-cell{width:100%;}
+  .bill-act .tbtn{flex:1;}
+}

@@ -99,6 +99,100 @@ export async function setReleasedBulk(sessionIds, released) {
   }
 }
 
+/* ---------------- الاشتراك والدفع ---------------- */
+
+export const BILLING_DEFAULTS = {
+  enabled: false,
+  amount: 0,
+  currency: "جنيه",
+  instapay: "",
+  perCycle: 4,
+  note: ""
+};
+
+/** إعدادات الاشتراك — يقرأها كل طالب مقبول، ويعدّلها المدرس وحده. */
+export async function loadBillingConfig() {
+  try {
+    const snap = await getDoc(doc(db, "config", "payments"));
+    return snap.exists() ? { ...BILLING_DEFAULTS, ...snap.data() } : { ...BILLING_DEFAULTS };
+  } catch {
+    return { ...BILLING_DEFAULTS };
+  }
+}
+
+export function saveBillingConfig(cfg) {
+  return setDoc(doc(db, "config", "payments"), {
+    enabled: !!cfg.enabled,
+    amount: Number(cfg.amount) || 0,
+    currency: String(cfg.currency || "جنيه").trim(),
+    instapay: String(cfg.instapay || "").trim(),
+    perCycle: Math.max(1, Number(cfg.perCycle) || 4),
+    note: String(cfg.note || "").trim().slice(0, 300)
+  }, { merge: true });
+}
+
+/**
+ * يحسب حالة الاشتراك.
+ * الأشهر المستحقّة تُحسب من عدد الحصص التي *فتحها المدرس* — لا من تقدّم الطالب —
+ * فلا يستطيع أحد تأجيل الدفع بعدم الضغط على «تمّت المذاكرة».
+ */
+export function billingState(cfg, releasedCount, payments) {
+  const perCycle = Math.max(1, cfg.perCycle || 4);
+  const earned = Math.floor(releasedCount / perCycle);
+  const confirmed = payments.filter(p => p.status === "confirmed").length;
+  const due = Math.max(0, earned - confirmed);
+  const cycle = confirmed + 1;                       // الشهر المطلوب دفعه الآن
+  const claim = payments.find(p => p.cycle === cycle);
+  return {
+    perCycle, earned, confirmed, due, cycle,
+    // تقدّم الشهر الجاري: كم حصة فُتحت من أصل perCycle
+    inCycle: releasedCount - earned * perCycle,
+    pending: claim && claim.status === "claimed",
+    rejected: claim && claim.status === "rejected",
+    claim
+  };
+}
+
+/** إقرارات الدفع الخاصة بالطالب الحالي. */
+export async function loadMyPayments(uid) {
+  try {
+    const snap = await getDocs(query(collection(db, "payments"), where("uid", "==", uid)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch {
+    return [];
+  }
+}
+
+/** الطالب يُقرّ بأنه حوّل. الحالة دائمًا claimed — التأكيد من المدرس. */
+export function claimPayment(user, name, cycle, amount, ref) {
+  return setDoc(doc(db, "payments", `${user.uid}_${cycle}`), {
+    uid: user.uid,
+    email: (user.email || "").toLowerCase(),
+    name: String(name || "").trim(),
+    cycle: Number(cycle),
+    amount: Number(amount) || 0,
+    ref: String(ref || "").trim().slice(0, 80),
+    status: "claimed",
+    claimedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+/** كل الإقرارات — للمدرس. */
+export async function loadAllPayments() {
+  const snap = await getDocs(collection(db, "payments"));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data(), claimedAtDate: d.data().claimedAt?.toDate?.() || null }))
+    .sort((a, b) => (b.claimedAtDate?.getTime() || 0) - (a.claimedAtDate?.getTime() || 0));
+}
+
+export function setPaymentStatus(pid, status) {
+  return updateDoc(doc(db, "payments", pid), { status, decidedAt: serverTimestamp() });
+}
+
+export function deletePayment(pid) {
+  return deleteDoc(doc(db, "payments", pid));
+}
+
 /* ---------------- تقدّم الطالب ---------------- */
 
 export async function loadProgress(uid) {
@@ -311,6 +405,8 @@ export async function loadStudents() {
     const p = prog.get(email);
     rows.push({
       email,
+      // مطلوب لمطابقة إقرارات الدفع، لأنها مفهرسة بـ uid لا بالإيميل
+      uid: u?.uid || "",
       name: a.name || u?.name || email.split("@")[0],
       role: a.role === "teacher" ? "teacher" : "student",
       active: a.active !== false,

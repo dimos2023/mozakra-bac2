@@ -10,10 +10,13 @@ import {
   loadGroups, createGroup, renameGroup, deleteGroup,
   loadMyRequest, submitRequest, loadRequests, approveRequest, rejectRequest, deleteRequest,
   setStudentGroup, setStudentActive, removeStudent, watchAccess,
-  watchSessions, setReleased, setReleasedBulk
+  watchSessions, setReleased, setReleasedBulk,
+  loadBillingConfig, saveBillingConfig, billingState,
+  loadMyPayments, claimPayment, loadAllPayments, setPaymentStatus, deletePayment
 } from "./store.js";
 import {
   UNITS, renderSession, renderLocked, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
+  renderBilling, billingBanner, claimFormHTML,
   buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
@@ -28,7 +31,7 @@ const state = {
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
-  view: "session",        // session | search | bank | students | admin | release
+  view: "session",        // session | search | bank | students | admin | release | billing
   current: 1,
   teacherMode: false,
   answersOpen: false,
@@ -38,6 +41,10 @@ const state = {
   groups: [],
   groupFilter: "all",
   myGroup: "",
+  billing: null,
+  payments: [],
+  allPayments: null,
+  claiming: false,
   searchTerm: ""
 };
 
@@ -289,6 +296,17 @@ function renderProgress() {
   el.progressFill.style.width = total ? (done / total * 100) + "%" : "0%";
 }
 
+/** عدد الحصص التي فتحها المدرس — أساس حساب الاشتراك. */
+function releasedCount() {
+  return state.outline.filter(o => o.released).length;
+}
+
+/** حالة اشتراك الطالب الحالي. */
+function myBilling() {
+  if (!state.billing) return null;
+  return billingState(state.billing, releasedCount(), state.payments);
+}
+
 /** يدمج الفهرس مع المحتوى المتاح. الحصة بلا محتوى = مقفولة. */
 function mergeSessions() {
   state.sessions = state.outline.map(o => {
@@ -326,7 +344,11 @@ function draw() {
       markNav(); updateBadge(); setMobileTitle();
       return;
     }
-    el.main.innerHTML = renderSession(s, {
+    const bill = state.role === "student" && state.billing?.enabled ? myBilling() : null;
+    const banner = bill
+      ? (state.claiming ? claimFormHTML(state.billing, bill) : billingBanner(state.billing, bill))
+      : "";
+    el.main.innerHTML = banner + renderSession(s, {
       isTeacher: state.role === "teacher",
       teacherMode: state.role === "teacher" && state.teacherMode,
       isDone: state.progress.completed.includes(s.n),
@@ -351,6 +373,22 @@ function draw() {
     }
     el.main.innerHTML = renderStudents(state.students, state.sessions.length,
                                        state.groups, state.groupFilter);
+  } else if (state.view === "billing") {
+    if (!state.allPayments || !state.students) {
+      el.main.innerHTML = '<div class="empty">جارٍ التحميل…</div>';
+      Promise.all([loadAllPayments(), state.students ? state.students : loadStudents()])
+        .then(([pays, studs]) => {
+          state.allPayments = pays;
+          state.students = studs;
+          if (state.view === "billing") draw();
+        })
+        .catch(e => {
+          el.main.innerHTML = `<div class="empty">تعذّر التحميل: ${escapeHTML(e.code || e.message)}</div>`;
+        });
+      return;
+    }
+    el.main.innerHTML = renderBilling(state.billing || {}, state.allPayments,
+                                      state.students, releasedCount());
   } else if (state.view === "release") {
     el.main.innerHTML = renderRelease(state.sessions);
   } else if (state.view === "admin") {
@@ -409,6 +447,7 @@ el.main.addEventListener("click", ev => {
   const a = ev.target.closest("[data-act]");
   if (!a) return;
 
+  if (billingAction(a)) return;
   if (adminAction(a)) return;
 
   switch (a.dataset.act) {
@@ -457,6 +496,104 @@ el.main.addEventListener("click", ev => {
     }
   }
 });
+
+/* ---------------- أفعال الاشتراك ---------------- */
+
+/** أفعال شريط الاشتراك وصفحة الاشتراكات. يرجع true لو تعامل مع الحدث. */
+function billingAction(a) {
+  const act = a.dataset.act;
+  const BILL = ["copy-instapay", "open-claim", "cancel-claim", "send-claim",
+                "save-billing", "confirm-pay", "reject-pay", "delete-pay", "refresh-billing"];
+  if (!BILL.includes(act)) return false;
+
+  const reloadTeacher = () => { state.allPayments = null; draw(); };
+  const fail = e => alert("تعذّر التنفيذ: " + (e.code || e.message));
+
+  switch (act) {
+    /* --- الطالب --- */
+    case "copy-instapay":
+      navigator.clipboard?.writeText(a.dataset.v || "")
+        .then(() => { a.textContent = "اتنسخ ✓"; setTimeout(() => { a.textContent = "نسخ"; }, 1600); })
+        .catch(() => {});
+      return true;
+
+    case "open-claim":
+      state.claiming = true;
+      draw();
+      setTimeout(() => $("payRef")?.focus(), 60);
+      return true;
+
+    case "cancel-claim":
+      state.claiming = false;
+      draw();
+      return true;
+
+    case "send-claim": {
+      const b = myBilling();
+      if (!b) return true;
+      const ref = ($("payRef")?.value || "").trim();
+      const err = $("payErr");
+      if (ref.length < 3) {
+        err.textContent = "اكتب رقم العملية أو مرجع التحويل.";
+        err.hidden = false;
+        return true;
+      }
+      a.disabled = true;
+      a.textContent = "جارٍ الإرسال…";
+      claimPayment(state.user, state.name, b.cycle, state.billing.amount, ref)
+        .then(() => loadMyPayments(state.user.uid))
+        .then(list => { state.payments = list; state.claiming = false; draw(); })
+        .catch(e => {
+          err.textContent = "تعذّر الإرسال: " + (e.code || e.message);
+          err.hidden = false;
+          a.disabled = false;
+          a.textContent = "إرسال الإقرار";
+        });
+      return true;
+    }
+
+    /* --- المدرس --- */
+    case "save-billing": {
+      if (state.role !== "teacher") return true;
+      const cfg = {
+        enabled: $("bEnabled").checked,
+        amount: $("bAmount").value,
+        currency: $("bCurrency").value,
+        perCycle: $("bPerCycle").value,
+        instapay: $("bInstapay").value,
+        note: $("bNote").value
+      };
+      a.disabled = true;
+      a.textContent = "جارٍ الحفظ…";
+      saveBillingConfig(cfg)
+        .then(loadBillingConfig)
+        .then(c => { state.billing = c; draw(); })
+        .catch(e => { fail(e); a.disabled = false; a.textContent = "حفظ الإعدادات"; });
+      return true;
+    }
+    case "confirm-pay":
+      if (state.role !== "teacher") return true;
+      a.disabled = true;
+      setPaymentStatus(a.dataset.id, "confirmed").then(reloadTeacher).catch(fail);
+      return true;
+    case "reject-pay":
+      if (state.role !== "teacher") return true;
+      if (!confirm("رفض الإقرار ده؟ الطالب هيقدر يبعت تاني.")) return true;
+      a.disabled = true;
+      setPaymentStatus(a.dataset.id, "rejected").then(reloadTeacher).catch(fail);
+      return true;
+    case "delete-pay":
+      if (state.role !== "teacher") return true;
+      if (!confirm("حذف سجل الدفعة نهائيًا؟")) return true;
+      deletePayment(a.dataset.id).then(reloadTeacher).catch(fail);
+      return true;
+    case "refresh-billing":
+      state.allPayments = null;
+      loadBillingConfig().then(c => { state.billing = c; draw(); });
+      return true;
+  }
+  return false;
+}
 
 /* ---------------- أفعال الإدارة ---------------- */
 
@@ -695,6 +832,8 @@ async function boot(user) {
 
   // المجموعات: المدرس يحتاجها للإدارة، والطالب لعرض اسم مجموعته
   state.groups = await loadGroups();
+  state.billing = await loadBillingConfig();
+  if (state.role === "student") state.payments = await loadMyPayments(user.uid);
 
   if (state.role === "teacher") {
     // نجلب الطلبات في الخلفية عشان يظهر عدّاد المعلّقة فورًا

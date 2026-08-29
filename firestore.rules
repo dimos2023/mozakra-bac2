@@ -158,6 +158,41 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // ---------- إعدادات الاشتراك ----------
+    // المبلغ وحساب إنستاباي وعدد الحصص في الشهر.
+    // كل طالب مقبول يقرأها (ليعرف كم يدفع ولمن)، والمدرس وحده يعدّلها.
+    match /config/{cfg} {
+      allow read:  if isAllowed();
+      allow write: if isTeacher();
+    }
+
+    // ---------- إقرارات الدفع ----------
+    // الطالب يُقرّ بأنه حوّل (status = 'claimed') ولا يستطيع تأكيد نفسه.
+    // التأكيد (confirmed) من المدرس وحده — لأن الموقع لا يتحقق من التحويل.
+    match /payments/{pid} {
+      allow read: if isTeacher();
+      allow read: if isAllowed() && resource.data.uid == request.auth.uid;
+
+      allow create: if isAllowed()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == mail()
+                    && request.resource.data.status == 'claimed'
+                    && request.resource.data.keys().hasOnly(
+                         ['uid','email','name','cycle','amount','ref','status','claimedAt']);
+
+      // إعادة الإقرار بعد الرفض — ولا يمسّ إقرارًا مؤكَّدًا
+      allow update: if isAllowed()
+                    && resource.data.uid == request.auth.uid
+                    && resource.data.status != 'confirmed'
+                    && request.resource.data.status == 'claimed'
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.keys().hasOnly(
+                         ['uid','email','name','cycle','amount','ref','status','claimedAt']);
+
+      // المدرس يؤكّد أو يرفض أو يحذف
+      allow list, update, delete: if isTeacher();
+    }
+
     // ---------- كل ما عدا ذلك: ممنوع ----------
     match /{document=**} {
       allow read, write: if false;

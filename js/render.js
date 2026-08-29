@@ -164,6 +164,197 @@ export function renderSession(s, ctx) {
   return h;
 }
 
+/* ---------------- الاشتراك: شريط الطالب ---------------- */
+
+/** شريط يظهر أعلى الحصة عندما يستحقّ على الطالب شهر. */
+export function billingBanner(cfg, b) {
+  if (!cfg.enabled) return "";
+
+  if (b.pending) {
+    return `<div class="bill wait no-print">
+      <div class="bill-h"><span class="bill-ico">⏳</span>إقرارك بالتحويل وصل للمدرس</div>
+      <p>الشهر ${b.cycle} — مستني تأكيد المدرس. هيختفي الشريط ده أول ما يأكّد.</p>
+    </div>`;
+  }
+
+  if (!b.due) {
+    // لا مستحقّات: نعرض تقدّم الشهر الجاري فقط
+    const left = b.perCycle - b.inCycle;
+    return `<div class="bill ok no-print">
+      <div class="bill-h"><span class="bill-ico">✓</span>اشتراكك سليم</div>
+      <p>فُتح ${b.inCycle} من ${b.perCycle} حصص في الشهر الحالي${
+        left > 0 ? ` — باقي <b>${left}</b> على الدفعة الجاية.` : "."}</p>
+    </div>`;
+  }
+
+  return `<div class="bill due no-print">
+    <div class="bill-h"><span class="bill-ico">!</span>${
+      b.due > 1 ? `عليك ${b.due} أشهر متأخرة` : `حان موعد اشتراك الشهر ${b.cycle}`}</div>
+    <p>المدرس فتح <b>${b.earned * b.perCycle}</b> حصة، يعني <b>${b.earned}</b> ${
+      b.earned > 1 ? "أشهر" : "شهر"} من الدراسة.${
+      b.rejected ? " <b>إقرارك السابق اتّرفض</b> — راجع رقم العملية وابعت تاني." : ""}</p>
+    <div class="bill-grid">
+      <div class="bill-cell"><span>المبلغ</span><b>${escapeHTML(String(cfg.amount))} ${escapeHTML(cfg.currency)}</b></div>
+      ${cfg.instapay ? `<div class="bill-cell"><span>حوّل على إنستاباي</span>
+        <b class="mail" id="ipHandle">${escapeHTML(cfg.instapay)}</b>
+        <button class="tbtn tiny" type="button" data-act="copy-instapay"
+                data-v="${escapeHTML(cfg.instapay)}">نسخ</button></div>` : ""}
+    </div>
+    ${cfg.note ? `<p class="bill-note">${escapeHTML(cfg.note)}</p>` : ""}
+    <div class="bill-act">
+      <button class="tbtn ok" type="button" data-act="open-claim">حوّلت — سجّل الإقرار</button>
+    </div>
+  </div>`;
+}
+
+/** نموذج إقرار التحويل. */
+export function claimFormHTML(cfg, b) {
+  return `<div class="bill due no-print" id="claimBox">
+    <div class="bill-h"><span class="bill-ico">✎</span>إقرار تحويل — الشهر ${b.cycle}</div>
+    <p>اكتب <b>رقم العملية</b> أو آخر 4 أرقام من الحساب اللي حوّلت منه، عشان المدرس يقدر يطابقها.</p>
+    <label class="fld">
+      <span>رقم العملية أو مرجع التحويل</span>
+      <input type="text" id="payRef" maxlength="80" placeholder="مثلاً: 1234567890">
+    </label>
+    <div class="jerr" id="payErr" hidden></div>
+    <div class="bill-act">
+      <button class="tbtn ok" type="button" data-act="send-claim">إرسال الإقرار</button>
+      <button class="tbtn" type="button" data-act="cancel-claim">إلغاء</button>
+    </div>
+    <p class="bill-note">الموقع <b>لا يتحقق من التحويل</b> — المدرس هو اللي بيراجع ويأكّد.</p>
+  </div>`;
+}
+
+/* ---------------- الاشتراك: صفحة المدرس ---------------- */
+
+export function renderBilling(cfg, payments, students, releasedCount) {
+  const perCycle = Math.max(1, cfg.perCycle || 4);
+  const earned = Math.floor(releasedCount / perCycle);
+  const claimed = payments.filter(p => p.status === "claimed");
+  const confirmed = payments.filter(p => p.status === "confirmed");
+  const learners = students.filter(s => s.role === "student" && s.active);
+
+  // من عليه مستحقّات
+  const paidBy = {};
+  confirmed.forEach(p => { paidBy[p.uid] = (paidBy[p.uid] || 0) + 1; });
+  const owing = learners.filter(s => {
+    const uid = s.uid || "";
+    return earned - (paidBy[uid] || 0) > 0;
+  });
+
+  let h = `<header class="page-head"><h2>الاشتراكات</h2>
+    <p>الحساب بعدد الحصص اللي فتحتها — كل ${perCycle} حصص = شهر.</p></header>`;
+
+  h += `<div class="stats">
+    <div class="stat"><div class="sv">${releasedCount}</div><div class="sl">حصة مفتوحة</div></div>
+    <div class="stat"><div class="sv">${earned}</div><div class="sl">شهر مستحق على كل طالب</div></div>
+    <div class="stat"><div class="sv">${claimed.length}</div><div class="sl">إقرار مستني تأكيدك</div></div>
+    <div class="stat"><div class="sv">${confirmed.length}</div><div class="sl">دفعة مؤكَّدة</div></div>
+  </div>`;
+
+  h += `<div class="topbar no-print"><span class="spacer"></span>
+    <button class="tbtn" type="button" data-act="refresh-billing">تحديث</button></div>`;
+
+  /* --- الإعدادات --- */
+  h += `<section class="blk"><div class="blabel">إعدادات الاشتراك</div>
+    <div class="card-form">
+      <label class="fld chk">
+        <input type="checkbox" id="bEnabled" ${cfg.enabled ? "checked" : ""}>
+        <span>فعّل تذكير الاشتراك للطلبة</span>
+      </label>
+      <div class="fld-row">
+        <label class="fld"><span>المبلغ الشهري</span>
+          <input type="number" id="bAmount" min="0" step="1" value="${escapeHTML(String(cfg.amount))}"></label>
+        <label class="fld"><span>العملة</span>
+          <input type="text" id="bCurrency" maxlength="12" value="${escapeHTML(cfg.currency)}"></label>
+        <label class="fld"><span>عدد الحصص في الشهر</span>
+          <input type="number" id="bPerCycle" min="1" max="12" value="${escapeHTML(String(perCycle))}"></label>
+      </div>
+      <label class="fld"><span>حساب إنستاباي (الاسم أو الرقم اللي الطالب هيحوّل عليه)</span>
+        <input type="text" id="bInstapay" maxlength="80" value="${escapeHTML(cfg.instapay)}"
+               placeholder="مثلاً: ahmed@instapay أو 010xxxxxxxx"></label>
+      <label class="fld"><span>ملحوظة تظهر للطالب <em>(اختياري)</em></span>
+        <textarea id="bNote" rows="2" maxlength="300"
+                  placeholder="مثلاً: اكتب اسمك في خانة الملاحظات عند التحويل">${escapeHTML(cfg.note)}</textarea></label>
+      <div class="bill-act">
+        <button class="tbtn ok" type="button" data-act="save-billing">حفظ الإعدادات</button>
+      </div>
+    </div></section>`;
+
+  /* --- إقرارات في الانتظار --- */
+  h += `<section class="blk"><div class="blabel">إقرارات مستنية تأكيدك ${
+    claimed.length ? `(${claimed.length})` : ""}</div>`;
+  if (!claimed.length) {
+    h += '<div class="empty">مفيش إقرارات جديدة.</div>';
+  } else {
+    h += claimed.map(p => `<div class="req">
+      <div class="req-who">
+        <span class="avatar">${escapeHTML((p.name || "؟").charAt(0))}</span>
+        <div>
+          <div class="req-nm">${escapeHTML(p.name || "—")}</div>
+          <div class="req-ml"><span class="en">${escapeHTML(p.email || "")}</span></div>
+          ${p.claimedAtDate ? `<div class="req-dt">${fmtDate(p.claimedAtDate)}</div>` : ""}
+        </div>
+      </div>
+      <div class="req-note">الشهر <b>${p.cycle}</b> · المبلغ <b>${escapeHTML(String(p.amount))}</b>
+        ${p.ref ? ` · المرجع <b class="mail">${escapeHTML(p.ref)}</b>` : " · <b>بلا مرجع</b>"}</div>
+      <div class="req-act">
+        <span class="spacer"></span>
+        <button class="tbtn ok"  type="button" data-act="confirm-pay" data-id="${escapeHTML(p.id)}">تأكيد الاستلام</button>
+        <button class="tbtn bad" type="button" data-act="reject-pay"  data-id="${escapeHTML(p.id)}">رفض</button>
+      </div>
+    </div>`).join("");
+  }
+  h += "</section>";
+
+  /* --- من عليه مستحقّات --- */
+  h += `<section class="blk"><div class="blabel">عليهم مستحقّات ${owing.length ? `(${owing.length})` : ""}</div>`;
+  if (!earned) {
+    h += `<div class="empty">لسه ما فتحتش ${perCycle} حصص، فمفيش مستحقّات.</div>`;
+  } else if (!owing.length) {
+    h += '<div class="empty">كل الطلبة دافعين. 👌</div>';
+  } else {
+    h += `<div class="tw"><table><caption>مستحقّات حتى الحصة ${releasedCount}</caption><thead><tr>
+      <th>الاسم</th><th>الإيميل</th><th>مدفوع</th><th>مستحق</th><th>المتأخر</th></tr></thead><tbody>`;
+    owing.forEach(s => {
+      const paid = paidBy[s.uid || ""] || 0;
+      h += `<tr>
+        <td>${escapeHTML(s.name)}</td>
+        <td><span class="en">${escapeHTML(s.email)}</span></td>
+        <td class="num">${paid}</td>
+        <td class="num">${earned}</td>
+        <td><span class="badge rejected">${earned - paid}</span></td>
+      </tr>`;
+    });
+    h += "</tbody></table></div>";
+  }
+  h += "</section>";
+
+  /* --- سجل الدفعات --- */
+  const done = payments.filter(p => p.status !== "claimed");
+  if (done.length) {
+    h += `<section class="blk"><div class="blabel">سجل الدفعات</div><div class="tw"><table>
+      <caption>آخر ${Math.min(done.length, 30)} دفعة</caption>
+      <thead><tr><th>الاسم</th><th>الشهر</th><th>المبلغ</th><th>المرجع</th><th>الحالة</th><th>التاريخ</th><th class="no-print"></th></tr></thead><tbody>`;
+    done.slice(0, 30).forEach(p => {
+      h += `<tr>
+        <td>${escapeHTML(p.name || "—")}</td>
+        <td class="num">${p.cycle}</td>
+        <td class="num">${escapeHTML(String(p.amount))}</td>
+        <td><span class="en">${escapeHTML(p.ref || "—")}</span></td>
+        <td><span class="badge ${p.status === "confirmed" ? "approved" : "rejected"}">${
+          p.status === "confirmed" ? "مؤكَّدة" : "مرفوضة"}</span></td>
+        <td class="num">${p.claimedAtDate ? fmtDate(p.claimedAtDate) : "—"}</td>
+        <td class="no-print"><button class="iconbtn danger" type="button"
+             data-act="delete-pay" data-id="${escapeHTML(p.id)}" title="حذف السجل">✕</button></td>
+      </tr>`;
+    });
+    h += "</tbody></table></div></section>";
+  }
+
+  return h;
+}
+
 /* ---------------- شاشة الحصة المقفولة ---------------- */
 
 /** يعرضها الطالب لما يفتح حصة لسه المدرس ما فتحهاش. */
