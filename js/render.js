@@ -345,7 +345,11 @@ export function renderAdmin(requests, groups, counts) {
 
   /* --- الطلبات المنتهية --- */
   if (decided.length) {
-    h += `<section class="blk"><div class="blabel">طلبات سابقة</div><div class="tw"><table>
+    h += `<section class="blk"><div class="blabel">طلبات سابقة</div>
+      <div class="box an" style="margin:0 0 12px"><div class="bt"><span class="ic">ت</span>ملحوظة</div>
+      <p>حذف السجل من هنا <b>لا يُلغي وصول الطالب</b> — ده أرشيف الطلبات بس.
+         لإلغاء الوصول فعليًا، روح <b>متابعة الطلبة</b> واستخدم زر الإيقاف أو الحذف.</p></div>
+      <div class="tw"><table>
       <caption>آخر ${Math.min(decided.length, 25)} طلب</caption>
       <thead><tr><th>الاسم</th><th>الإيميل</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead><tbody>`;
     decided.slice(0, 25).forEach(r => {
@@ -355,7 +359,7 @@ export function renderAdmin(requests, groups, counts) {
         <td><span class="badge ${r.status}">${r.status === "approved" ? "مقبول" : "مرفوض"}</span></td>
         <td class="num">${r.createdAtDate ? fmtDate(r.createdAtDate) : "—"}</td>
         <td class="no-print"><button class="iconbtn danger" type="button"
-             data-act="delete-request" data-uid="${escapeHTML(r.uid)}" title="حذف السجل">✕</button></td>
+             data-act="delete-request" data-uid="${escapeHTML(r.uid)}" title="حذف سجل الطلب من الأرشيف (لا يلغي الوصول)">✕</button></td>
       </tr>`;
     });
     h += "</tbody></table></div></section>";
@@ -432,7 +436,7 @@ export function renderStudents(rows, totalSessions, groups = [], filterGroup = "
         `<button class="iconbtn" type="button" data-act="toggle-active" data-email="${escapeHTML(r.email)}"
                  data-active="${r.active}" title="${r.active ? "إيقاف" : "تفعيل"}">${r.active ? "⏸" : "▶"}</button>
          <button class="iconbtn danger" type="button" data-act="remove-student" data-email="${escapeHTML(r.email)}"
-                 title="حذف نهائي">✕</button>`}</td>
+                 title="إلغاء الوصول نهائيًا">✕</button>`}</td>
     </tr>`;
   });
 

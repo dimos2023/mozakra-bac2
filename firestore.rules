@@ -50,10 +50,14 @@ service cloud.firestore {
       allow get:  if isSignedIn() && mailId == request.auth.token.email.lower();
       allow list: if isTeacher();
 
-      // المدرس لا يستطيع إلغاء صفة المدرس عن نفسه (حماية من الإقفال الذاتي)
-      allow write: if isTeacher()
-                   && !(mailId == mail() && request.resource.data.role != 'teacher')
-                   && !(mailId == mail() && request.method == 'delete');
+      // الإنشاء والتعديل — مع منع المدرس من إلغاء صفته عن نفسه
+      // (ملحوظة: request.resource متاح في create و update فقط)
+      allow create, update: if isTeacher()
+                            && !(mailId == mail() && request.resource.data.role != 'teacher');
+
+      // الحذف — request.resource يكون null هنا، فلا نلمسه إطلاقًا.
+      // المدرس ممنوع من حذف نفسه حتى لا يُقفل خارج النظام.
+      allow delete: if isTeacher() && mailId != mail();
     }
 
     // ---------- طلبات الانضمام ----------

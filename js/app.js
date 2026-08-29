@@ -9,7 +9,7 @@ import {
   loadSessions, loadProgress, saveProgress, flushProgress, loadStudents, clearCache,
   loadGroups, createGroup, renameGroup, deleteGroup,
   loadMyRequest, submitRequest, loadRequests, approveRequest, rejectRequest, deleteRequest,
-  setStudentGroup, setStudentActive, removeStudent
+  setStudentGroup, setStudentActive, removeStudent, watchAccess
 } from "./store.js";
 import {
   UNITS, renderSession, renderSearch, renderBank, renderStudents, renderAdmin,
@@ -128,8 +128,22 @@ function gateWaiting(text) {
   el.gateBody.innerHTML = `<div class="gate-msg wait">${text}</div>`;
 }
 
+const REVOKED_MSG = {
+  removed:  "تم إلغاء وصولك للمذكرة. لو ده بالغلط، كلّم المدرس أو اعمل طلب انضمام جديد.",
+  disabled: "تم إيقاف حسابك مؤقتًا. كلّم المدرس لإعادة تفعيله."
+};
+
 function resetGate() {
-  el.gateBody.innerHTML = `
+  let notice = "";
+  try {
+    const r = sessionStorage.getItem("memo:revoked");
+    if (r) {
+      notice = `<div class="gate-msg err">${REVOKED_MSG[r] || REVOKED_MSG.removed}</div>`;
+      sessionStorage.removeItem("memo:revoked");
+    }
+  } catch {}
+
+  el.gateBody.innerHTML = notice + `
     <p class="gate-note">سجّل الدخول بحساب جوجل المسجَّل لدى المدرس للوصول إلى المذكرة.</p>
     <button class="gbtn" type="button" id="signinBtn">
       <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
@@ -414,7 +428,7 @@ function adminAction(a) {
       return true;
     }
     case "delete-request":
-      if (!confirm("حذف سجل الطلب نهائيًا؟")) return true;
+      if (!confirm("حذف سجل الطلب من الأرشيف؟\nده مش هيلغي وصول الطالب — لو عايز تلغيه روح متابعة الطلبة.")) return true;
       deleteRequest(a.dataset.uid).then(reload).catch(fail);
       return true;
 
@@ -453,7 +467,8 @@ function adminAction(a) {
       return true;
     }
     case "remove-student":
-      if (!confirm(`حذف ${a.dataset.email} نهائيًا من قائمة المسموح لهم؟`)) return true;
+      if (!confirm(`إلغاء وصول ${a.dataset.email} نهائيًا؟
+هيتقفل عليه فورًا حتى لو الموقع مفتوح عنده دلوقتي.`)) return true;
       removeStudent(a.dataset.email).then(reload).catch(fail);
       return true;
   }
@@ -603,6 +618,15 @@ async function boot(user) {
   el.boot.hidden = true;
   el.gate.hidden = true;
   el.shell.hidden = false;
+
+  // إلغاء الوصول لحظيًا: لو المدرس حذف الطالب أو أوقفه، يخرج فورًا
+  watchAccess(user.email, async reason => {
+    try { sessionStorage.setItem("memo:revoked", reason); } catch {}
+    await flushProgress();
+    clearCache();
+    await signOutNow().catch(() => {});
+    location.reload();
+  });
 }
 
 catchRedirect().finally(() => {

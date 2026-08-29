@@ -4,7 +4,7 @@
 
 import {
   collection, query, where, getDocs, doc, getDoc, setDoc, addDoc,
-  updateDoc, deleteDoc, serverTimestamp, writeBatch
+  updateDoc, deleteDoc, serverTimestamp, writeBatch, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { db } from "./auth.js";
@@ -110,6 +110,30 @@ export async function flushProgress() {
 
 // نحاول الحفظ قبل إغلاق الصفحة
 addEventListener("pagehide", () => { flushProgress(); });
+
+/* ---------------- مراقبة الصلاحية لحظيًا ---------------- */
+
+/**
+ * يراقب وثيقة المستخدم في allowlist. لو اتحذفت أو اتوقفت،
+ * ينادي onRevoked فورًا — حتى لو التبويب مفتوح من ساعات.
+ * يرجع دالة لإيقاف المراقبة.
+ */
+export function watchAccess(email, onRevoked) {
+  const ref = doc(db, "allowlist", String(email).toLowerCase());
+  let first = true;
+  return onSnapshot(ref,
+    snap => {
+      // نتجاهل أول لقطة لأنها حالة الدخول التي تم التحقق منها بالفعل
+      if (first) { first = false; if (snap.exists() && snap.data().active !== false) return; }
+      if (!snap.exists())               onRevoked("removed");
+      else if (snap.data().active === false) onRevoked("disabled");
+    },
+    err => {
+      // فقدان صلاحية القراءة نفسه يعني أن الوصول أُلغي
+      if (err.code === "permission-denied") onRevoked("removed");
+    }
+  );
+}
 
 /* ---------------- المجموعات ---------------- */
 

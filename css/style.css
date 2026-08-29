@@ -443,45 +443,63 @@ td:first-child{font-weight:600; color:var(--ink);}
   display:inline-grid; place-items:center; padding:0 5px; margin-inline-start:7px;}
 .link-btn{display:flex; align-items:center;}
 
-/* ================= الرسوم التوضيحية (SVG) ================= */
-.fig{margin:16px 0 0; padding:0;}
+/* ================= الرسوم التوضيحية (SVG) =================
+   الرسوم لها لوحة ألوان ثابتة مستقلة عن الثيم — خلفية فاتحة دائمًا.
+   السبب: المخططات تُقرأ أوضح على أرضية فاتحة، وتطبع كما هي،
+   ولقطة الشاشة منها تبقى صالحة للمشاركة في أي وضع.
+   ============================================================ */
+.fig{margin:18px 0 0; padding:0;}
 .fig:first-child{margin-top:0;}
-.fig-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:11px;
-  background:var(--card2); padding:16px 14px;}
+.fig-scroll{
+  overflow-x:auto; border-radius:11px; padding:18px 16px;
+  background:#FBFCFB; border:1px solid #C9D4CF;
+  box-shadow:0 1px 2px rgba(18,38,42,.06), 0 8px 22px -14px rgba(18,38,42,.35);
+}
 .fig svg{display:block; width:100%; height:auto;}
-.fig figcaption{margin-top:9px; font-size:12.5px; color:var(--ink3); text-align:center; line-height:1.7;}
+.fig figcaption{margin-top:10px; font-size:12.5px; color:var(--ink3); text-align:center; line-height:1.7;}
 .fig figcaption b{color:var(--ink2);}
+.fig figcaption .en{color:var(--teal);}
 
-/* عناصر الرسم — كلها تتبع متغيّرات الثيم */
+/* --- ألوان الرسم: قيم ثابتة، لا تتبع الثيم --- */
 .fig svg text{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;}
-.s-t   {fill:var(--ink);   font-size:13px; font-weight:600;}
-.s-t2  {fill:var(--ink2);  font-size:11.5px;}
-.s-t3  {fill:var(--ink3);  font-size:10.5px;}
-.s-inv {fill:var(--card);  font-size:12px; font-weight:600;}
-.s-mono{font-family:"IBM Plex Mono",monospace !important; font-size:10.5px; fill:var(--ink3);}
+.s-t   {fill:#12262A; font-size:13px;   font-weight:600;}
+.s-t2  {fill:#3D5257; font-size:11.5px;}
+.s-t3  {fill:#68797E; font-size:10.5px;}
+.s-inv {fill:#FFFFFF; font-size:12px;   font-weight:600;}
+.s-mono{fill:#68797E; font-size:10.5px; font-family:"IBM Plex Mono",monospace;}
 
-.s-line{stroke:var(--line2); stroke-width:1.5; fill:none;}
-.s-line-d{stroke:var(--line2); stroke-width:1.5; fill:none; stroke-dasharray:5 4;}
-.s-axis{stroke:var(--line2); stroke-width:1.2; fill:none;}
+.s-line  {stroke:#B4C2BC; stroke-width:1.5; fill:none;}
+.s-line-d{stroke:#B4C2BC; stroke-width:1.5; fill:none; stroke-dasharray:5 4;}
+.s-axis  {stroke:#9FB0AA; stroke-width:1.2; fill:none;}
 
-.s-box   {fill:var(--card); stroke:var(--line2); stroke-width:1.2;}
-.s-box-2 {fill:var(--card2); stroke:var(--line); stroke-width:1.2;}
-.s-teal  {fill:var(--teal);}
-.s-tealsoft{fill:var(--tealsoft); stroke:var(--teal); stroke-width:1.2;}
-.s-saf   {fill:var(--saf);}
-.s-safsoft{fill:var(--safsoft); stroke:var(--saf); stroke-width:1.2;}
-.s-grn   {fill:var(--grn);}
-.s-grnsoft{fill:var(--grnsoft); stroke:var(--grn); stroke-width:1.2;}
-.s-clay  {fill:var(--clay);}
-.s-claysoft{fill:var(--claysoft); stroke:var(--clay); stroke-width:1.2;}
-.s-tealstroke{stroke:var(--teal); stroke-width:2; fill:none;}
-.s-clstroke{stroke:var(--clay); stroke-width:2; fill:none;}
-.s-tealtxt{fill:var(--teal); font-size:11.5px; font-weight:600;}
-.s-saftxt {fill:var(--saf);  font-size:11.5px; font-weight:600;}
-.s-grntxt {fill:var(--grn);  font-size:11.5px; font-weight:600;}
-.s-claytxt{fill:var(--clay); font-size:11.5px; font-weight:600;}
+.s-box   {fill:#FFFFFF; stroke:#B4C2BC; stroke-width:1.2;}
+.s-box-2 {fill:#F0F4F2; stroke:#C4D0CB; stroke-width:1.2;}
+
+.s-teal      {fill:#0F6470;}
+.s-tealsoft  {fill:#DCEBEC; stroke:#0F6470; stroke-width:1.2;}
+.s-tealstroke{stroke:#0F6470; stroke-width:2.2; fill:none;}
+.s-tealtxt   {fill:#0B4C56; font-size:11.5px; font-weight:600;}
+
+.s-saf     {fill:#B07E0B;}
+.s-safsoft {fill:#F8EFD3; stroke:#B07E0B; stroke-width:1.2;}
+.s-saftxt  {fill:#7A5B08; font-size:11.5px; font-weight:600;}
+
+.s-grn     {fill:#2C6B4F;}
+.s-grnsoft {fill:#DEEDE5; stroke:#2C6B4F; stroke-width:1.2;}
+.s-grntxt  {fill:#245840; font-size:11.5px; font-weight:600;}
+
+.s-clay     {fill:#A64B21;}
+.s-claysoft {fill:#F8E6DD; stroke:#A64B21; stroke-width:1.2;}
+.s-clstroke {stroke:#A64B21; stroke-width:2.2; fill:none;}
+.s-claytxt  {fill:#8A3D1A; font-size:11.5px; font-weight:600;}
+
+/* في الوضع الليلي نلطّف بياض البطاقة قليلًا حتى لا تبهر العين */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .fig-scroll{background:#EEF2F0; border-color:#5A6C67;}
+}
+:root[data-theme="dark"] .fig-scroll{background:#EEF2F0; border-color:#5A6C67;}
 
 @media print{
-  .fig-scroll{background:#fff; border-color:#bbb; break-inside:avoid;}
   .fig{break-inside:avoid;}
+  .fig-scroll{background:#fff !important; border-color:#bbb !important; box-shadow:none;}
 }
