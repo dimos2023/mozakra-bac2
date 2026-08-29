@@ -442,3 +442,46 @@ td:first-child{font-weight:600; color:var(--ink);}
   font-size:10px; font-weight:600; min-width:17px; height:17px; border-radius:20px;
   display:inline-grid; place-items:center; padding:0 5px; margin-inline-start:7px;}
 .link-btn{display:flex; align-items:center;}
+
+/* ================= الرسوم التوضيحية (SVG) ================= */
+.fig{margin:16px 0 0; padding:0;}
+.fig:first-child{margin-top:0;}
+.fig-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:11px;
+  background:var(--card2); padding:16px 14px;}
+.fig svg{display:block; width:100%; height:auto;}
+.fig figcaption{margin-top:9px; font-size:12.5px; color:var(--ink3); text-align:center; line-height:1.7;}
+.fig figcaption b{color:var(--ink2);}
+
+/* عناصر الرسم — كلها تتبع متغيّرات الثيم */
+.fig svg text{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;}
+.s-t   {fill:var(--ink);   font-size:13px; font-weight:600;}
+.s-t2  {fill:var(--ink2);  font-size:11.5px;}
+.s-t3  {fill:var(--ink3);  font-size:10.5px;}
+.s-inv {fill:var(--card);  font-size:12px; font-weight:600;}
+.s-mono{font-family:"IBM Plex Mono",monospace !important; font-size:10.5px; fill:var(--ink3);}
+
+.s-line{stroke:var(--line2); stroke-width:1.5; fill:none;}
+.s-line-d{stroke:var(--line2); stroke-width:1.5; fill:none; stroke-dasharray:5 4;}
+.s-axis{stroke:var(--line2); stroke-width:1.2; fill:none;}
+
+.s-box   {fill:var(--card); stroke:var(--line2); stroke-width:1.2;}
+.s-box-2 {fill:var(--card2); stroke:var(--line); stroke-width:1.2;}
+.s-teal  {fill:var(--teal);}
+.s-tealsoft{fill:var(--tealsoft); stroke:var(--teal); stroke-width:1.2;}
+.s-saf   {fill:var(--saf);}
+.s-safsoft{fill:var(--safsoft); stroke:var(--saf); stroke-width:1.2;}
+.s-grn   {fill:var(--grn);}
+.s-grnsoft{fill:var(--grnsoft); stroke:var(--grn); stroke-width:1.2;}
+.s-clay  {fill:var(--clay);}
+.s-claysoft{fill:var(--claysoft); stroke:var(--clay); stroke-width:1.2;}
+.s-tealstroke{stroke:var(--teal); stroke-width:2; fill:none;}
+.s-clstroke{stroke:var(--clay); stroke-width:2; fill:none;}
+.s-tealtxt{fill:var(--teal); font-size:11.5px; font-weight:600;}
+.s-saftxt {fill:var(--saf);  font-size:11.5px; font-weight:600;}
+.s-grntxt {fill:var(--grn);  font-size:11.5px; font-weight:600;}
+.s-claytxt{fill:var(--clay); font-size:11.5px; font-weight:600;}
+
+@media print{
+  .fig-scroll{background:#fff; border-color:#bbb; break-inside:avoid;}
+  .fig{break-inside:avoid;}
+}

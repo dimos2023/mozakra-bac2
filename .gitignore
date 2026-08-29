@@ -8,6 +8,7 @@ seed/*-firebase-adminsdk-*.json
 # لو رفعت الملف ده على ريبو public، أي حد هيقرأ المذكرة
 # من غير تسجيل دخول وتبقى الحماية اتلغت.
 seed/content-*.json
+seed/*.backup.json
 seed/students.csv
 
 # ── أدوات ────────────────────────────────────────────
