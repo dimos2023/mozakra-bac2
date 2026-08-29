@@ -93,7 +93,11 @@ async function showJoinFlow(user) {
       });
       await showJoinFlow(user);
     } catch (e) {
-      err.textContent = "تعذّر إرسال الطلب: " + (e.code || e.message);
+      err.innerHTML = e.code === "permission-denied"
+        ? "<b>قواعد الأمان الجديدة لم تُنشر بعد.</b><br>" +
+          "للمدرس: افتح Firebase ← Firestore ← Rules، والصق محتوى ملف " +
+          '<span class="mail">firestore.rules</span> ثم اضغط Publish.'
+        : "تعذّر إرسال الطلب: " + escapeHTML(e.code || e.message);
       err.hidden = false;
       send.disabled = false;
       send.textContent = "إرسال طلب الانضمام";
