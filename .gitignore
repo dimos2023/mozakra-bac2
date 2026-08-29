@@ -1,0 +1,19 @@
+# ── أسرار: لا تُرفع أبدًا ─────────────────────────────
+seed/service-account.json
+seed/*-firebase-adminsdk-*.json
+.env
+.env.*
+
+# ── المحتوى: يبقى محليًا فقط ──────────────────────────
+# لو رفعت الملف ده على ريبو public، أي حد هيقرأ المذكرة
+# من غير تسجيل دخول وتبقى الحماية اتلغت.
+seed/content-*.json
+seed/students.csv
+
+# ── أدوات ────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.firebase/
+.DS_Store
+Thumbs.db
+*.local

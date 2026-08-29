@@ -1,0 +1,16 @@
+{
+  "name": "mozakra-seed",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "رفع محتوى المذكرة وقائمة الطلبة إلى Firestore",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

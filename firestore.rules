@@ -1,0 +1,102 @@
+rules_version = '2';
+
+// ============================================================
+//  قواعد أمان Firestore — مذكرة البرمجة والذكاء الاصطناعي
+//  ------------------------------------------------------------
+//  المبدأ: لا أحد يقرأ المحتوى إلا إذا كان:
+//    (1) مسجّل دخول بحساب جوجل بإيميل مُوثَّق، و
+//    (2) إيميله موجود في مجموعة allowlist، و
+//    (3) الحقل active في وثيقته = true
+//
+//  الكتابة في allowlist و sessions ممنوعة تمامًا من المتصفح.
+//  التعديل عليهما يتم فقط من سكربت seed/seed.js (Admin SDK)
+//  أو يدويًا من Firebase Console.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- دوال مساعدة ----------
+
+    function isSignedIn() {
+      return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email_verified == true;
+    }
+
+    function mail() {
+      return request.auth.token.email.lower();
+    }
+
+    function allowDoc() {
+      return get(/databases/$(database)/documents/allowlist/$(mail())).data;
+    }
+
+    function isAllowed() {
+      return isSignedIn()
+          && exists(/databases/$(database)/documents/allowlist/$(mail()))
+          && allowDoc().active == true;
+    }
+
+    function isTeacher() {
+      return isAllowed() && allowDoc().role == 'teacher';
+    }
+
+    // ---------- قائمة المسموح لهم ----------
+    // الطالب يقرأ وثيقته هو فقط (عشان يعرف دوره).
+    // المدرس يقدر يستعرض القائمة كلها.
+    // الكتابة ممنوعة من المتصفح نهائيًا.
+    match /allowlist/{mailId} {
+      allow get:  if isSignedIn() && mailId == request.auth.token.email.lower();
+      allow list: if isTeacher();
+      allow write: if false;
+    }
+
+    // ---------- محتوى المذكرة ----------
+    // قراءة فقط، وللمسموح لهم فقط. لا كتابة من المتصفح.
+    match /sessions/{sid} {
+      allow read:  if isAllowed();
+      allow write: if false;
+    }
+
+    // ---------- ملفات المستخدمين (سجل الدخول) ----------
+    // كل مستخدم يكتب وثيقته هو. المدرس يقرأ الكل.
+    match /users/{uid} {
+      allow get:  if isAllowed() && (request.auth.uid == uid || isTeacher());
+      allow list: if isTeacher();
+
+      allow create: if isAllowed()
+                    && request.auth.uid == uid
+                    && request.resource.data.email == mail()
+                    && request.resource.data.keys().hasOnly(
+                         ['email','name','photo','firstLogin','lastLogin','loginCount']);
+
+      allow update: if isAllowed()
+                    && request.auth.uid == uid
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.keys().hasOnly(
+                         ['email','name','photo','firstLogin','lastLogin','loginCount']);
+
+      allow delete: if false;
+    }
+
+    // ---------- تقدّم الطالب ----------
+    // كل طالب يقرأ ويكتب تقدّمه هو فقط. المدرس يقرأ الكل.
+    match /progress/{uid} {
+      allow get:  if isAllowed() && (request.auth.uid == uid || isTeacher());
+      allow list: if isTeacher();
+
+      allow write: if isAllowed()
+                   && request.auth.uid == uid
+                   && request.resource.data.keys().hasOnly(
+                        ['completed','lastSession','updatedAt','email']);
+
+      allow delete: if false;
+    }
+
+    // ---------- كل ما عدا ذلك: ممنوع ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
