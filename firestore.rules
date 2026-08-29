@@ -126,9 +126,23 @@ service cloud.firestore {
     }
 
     // ---------- محتوى المذكرة ----------
+    // المدرس يقرأ كل الحصص. الطالب يقرأ المفتوحة فقط —
+    // والقاعدة دي تُطبَّق على الخادم، فمحتوى الحصة المقفولة
+    // لا يصل جهاز الطالب إطلاقًا (مش مجرد إخفاء من الشاشة).
+    //
+    // ملحوظة: لأن القواعد ليست فلترًا، استعلام الطالب لازم يقيّد
+    // released == true وإلا يُرفض بالكامل. الكود بيعمل كده.
     match /sessions/{sid} {
-      allow read:  if isAllowed();
-      allow write: if false;
+      allow read: if isTeacher();
+      allow read: if isAllowed() && resource.data.released == true;
+
+      // المدرس يفتح ويقفل فقط — ممنوع تعديل المحتوى من المتصفح.
+      // التعديل على النص يتم من seed.js بصلاحيات Admin وحدها.
+      allow update: if isTeacher()
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['released']);
+
+      allow create, delete: if false;
     }
 
     // ---------- كل ما عدا ذلك: ممنوع ----------

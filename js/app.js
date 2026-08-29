@@ -9,10 +9,11 @@ import {
   loadSessions, loadProgress, saveProgress, flushProgress, loadStudents, clearCache,
   loadGroups, createGroup, renameGroup, deleteGroup,
   loadMyRequest, submitRequest, loadRequests, approveRequest, rejectRequest, deleteRequest,
-  setStudentGroup, setStudentActive, removeStudent, watchAccess
+  setStudentGroup, setStudentActive, removeStudent, watchAccess,
+  watchSessions, setReleased, setReleasedBulk
 } from "./store.js";
 import {
-  UNITS, renderSession, renderSearch, renderBank, renderStudents, renderAdmin,
+  UNITS, renderSession, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
   buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
@@ -25,7 +26,7 @@ const state = {
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
-  view: "session",        // session | search | bank | students | admin
+  view: "session",        // session | search | bank | students | admin | release
   current: 1,
   teacherMode: false,
   answersOpen: false,
@@ -218,11 +219,12 @@ function renderNav() {
       const done = state.progress.completed.includes(s.n);
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "navbtn" + (s.rev ? " rev" : "") + (done ? " done" : "");
+      const locked = state.role === "teacher" && !s.released;
+      b.className = "navbtn" + (s.rev ? " rev" : "") + (done ? " done" : "") + (locked ? " locked" : "");
       b.dataset.n = s.n;
       b.innerHTML = `<span class="nn">${s.n}</span>
         <span>${s.rev ? s.ref : s.title}<span class="nd">${s.date}</span></span>
-        <span class="tick">✓</span>`;
+        <span class="tick">${locked ? "🔒" : "✓"}</span>`;
       b.addEventListener("click", () => go("session", s.n));
       g.appendChild(b);
     });
@@ -268,6 +270,7 @@ function draw() {
     const s = state.sessions.find(x => x.n === state.current);
     if (!s) return;
     el.main.innerHTML = renderSession(s, {
+      isTeacher: state.role === "teacher",
       teacherMode: state.role === "teacher" && state.teacherMode,
       isDone: state.progress.completed.includes(s.n),
       prev: state.sessions.find(x => x.n === s.n - 1),
@@ -291,6 +294,8 @@ function draw() {
     }
     el.main.innerHTML = renderStudents(state.students, state.sessions.length,
                                        state.groups, state.groupFilter);
+  } else if (state.view === "release") {
+    el.main.innerHTML = renderRelease(state.sessions);
   } else if (state.view === "admin") {
     if (!state.requests) {
       el.main.innerHTML = '<div class="empty">جارٍ تحميل الطلبات…</div>';
@@ -401,7 +406,8 @@ el.main.addEventListener("click", ev => {
 function adminAction(a) {
   const act = a.dataset.act;
   const ADMIN = ["approve", "reject", "delete-request", "add-group", "rename-group",
-                 "delete-group", "refresh-admin", "toggle-active", "remove-student"];
+                 "delete-group", "refresh-admin", "toggle-active", "remove-student",
+                 "toggle-release", "release-next", "release-all", "lock-all"];
   if (!ADMIN.includes(act)) return false;
   if (state.role !== "teacher") return true;
 
@@ -460,6 +466,31 @@ function adminAction(a) {
     case "refresh-admin":
       reload();
       return true;
+
+    case "toggle-release":
+    case "release-next": {
+      const sess = state.sessions.find(x => x.id === a.dataset.id);
+      if (!sess) return true;
+      a.disabled = true;
+      setReleased(sess.id, !sess.released).catch(fail);
+      return true;
+    }
+    case "release-all": {
+      const ids = state.sessions.filter(x => !x.released).map(x => x.id);
+      if (!ids.length) return true;
+      if (!confirm(`فتح ${ids.length} حصة لكل الطلبة؟`)) return true;
+      a.disabled = true;
+      setReleasedBulk(ids, true).catch(fail);
+      return true;
+    }
+    case "lock-all": {
+      const ids = state.sessions.filter(x => x.released && x.n !== 1).map(x => x.id);
+      if (!ids.length) return true;
+      if (!confirm(`قفل ${ids.length} حصة؟ الحصة الأولى هتفضل مفتوحة.`)) return true;
+      a.disabled = true;
+      setReleasedBulk(ids, false).catch(fail);
+      return true;
+    }
 
     case "toggle-active": {
       const on = a.dataset.active !== "true";
@@ -578,7 +609,7 @@ async function boot(user) {
 
   try {
     const [sessions, progress] = await Promise.all([
-      loadSessions(),
+      loadSessions({ isTeacher: res.role === "teacher" }),
       loadProgress(user.uid)
     ]);
     state.sessions = sessions;
@@ -618,6 +649,17 @@ async function boot(user) {
   el.boot.hidden = true;
   el.gate.hidden = true;
   el.shell.hidden = false;
+
+  // الحصص لحظيًا: أول ما المدرس يفتح حصة تظهر عند الطلبة فورًا
+  watchSessions(state.role === "teacher", list => {
+    const before = state.sessions.length;
+    state.sessions = list;
+    state.index = buildIndex(list);
+    if (!list.some(x => x.n === state.current)) state.current = list[0]?.n || 1;
+    renderNav();
+    renderProgress();
+    if (list.length !== before || state.view === "release") draw();
+  });
 
   // إلغاء الوصول لحظيًا: لو المدرس حذف الطالب أو أوقفه، يخرج فورًا
   watchAccess(user.email, async reason => {

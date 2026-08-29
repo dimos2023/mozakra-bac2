@@ -63,13 +63,36 @@ async function seedContent() {
 
   // Firestore لا يسمح بمصفوفة داخل مصفوفة (timing و terms و rows كلها كذلك)،
   // لذلك نخزّن الحصة كنص JSON في حقل واحد، ونُبقي n و term كحقول عُليا للفلترة.
+  // نقرأ حالة الفتح الحالية حتى لا نلغي اختيارات المدرس عند إعادة الرفع.
+  // ملحوظة: نُسجّل فقط الوثائق التي *عرَّفت* الحقل — الوثيقة القديمة التي
+  // لا تحتوي عليه تُعامَل كأنها جديدة فتأخذ الافتراضي، لا كأنها مقفولة.
+  const existing = new Map();
+  const cur = await db.collection("sessions").get();
+  cur.forEach(d => {
+    const v = d.data().released;
+    if (typeof v === "boolean") existing.set(d.id, v);
+  });
+
+  const RELEASE_ALL  = args.includes("--release-all");
+  const RELEASE_NONE = args.includes("--lock-all");
+
   const docs = sessions.map(s => {
     if (!s.id) die(`حصة رقم ${s.n} بلا معرّف id`);
     const payload = JSON.stringify(s);
     const size = Buffer.byteLength(payload, "utf8");
     if (size > 900_000) die(`حصة ${s.n} حجمها ${size} بايت — أكبر من حد Firestore.`);
-    return { doc: { id: s.id, n: s.n, term: s.term, title: s.title, payload }, size };
+
+    // الأولوية: الأعلام الصريحة ← الحالة المحفوظة ← الافتراضي (الأولى مفتوحة فقط)
+    const released = RELEASE_ALL  ? true
+                   : RELEASE_NONE ? (s.n === 1)
+                   : existing.has(s.id) ? existing.get(s.id)
+                   : (s.n === 1);
+
+    return { doc: { id: s.id, n: s.n, term: s.term, title: s.title, released, payload }, size };
   });
+
+  const openCount = docs.filter(d => d.doc.released).length;
+  console.log(`   الفتح: ${openCount} مفتوحة · ${docs.length - openCount} مقفولة`);
 
   const total = docs.reduce((a, d) => a + d.size, 0);
   console.log(`   الحجم الكلي: ${(total / 1024).toFixed(0)} كيلوبايت` +

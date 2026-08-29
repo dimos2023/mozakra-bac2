@@ -503,3 +503,26 @@ td:first-child{font-weight:600; color:var(--ink);}
   .fig{break-inside:avoid;}
   .fig-scroll{background:#fff !important; border-color:#bbb !important; box-shadow:none;}
 }
+
+/* ================= فتح وقفل الحصص ================= */
+.navbtn.locked{opacity:.62;}
+.navbtn.locked .nn{background:var(--card2); color:var(--ink3); border-style:dashed;}
+.navbtn.locked .tick{opacity:1; font-size:10px;}
+.tbtn.lock-btn{border-color:var(--clay); color:var(--clay);}
+.tbtn.lock-btn.on{background:var(--grnsoft); border-color:var(--grn); color:var(--grn); font-weight:600;}
+
+.rel-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:10px;}
+.rel{display:grid; grid-template-columns:auto 1fr; gap:3px 11px; align-items:start;
+  background:var(--card); border:1px solid var(--line); border-radius:10px;
+  padding:13px 15px; cursor:pointer; font:inherit; text-align:start; color:var(--ink);}
+.rel:hover{border-color:var(--teal);}
+.rel:disabled{opacity:.5; cursor:default;}
+.rel-n{grid-row:1 / span 3; font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+  background:var(--paper); border:1px dashed var(--line2); color:var(--ink3);
+  border-radius:6px; width:28px; height:28px; display:grid; place-items:center;}
+.rel-t{font-size:13px; font-weight:600; line-height:1.5;}
+.rel-d{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--ink3);}
+.rel-s{font-size:11px; color:var(--clay); font-weight:600;}
+.rel.on{border-color:var(--grn); background:var(--grnsoft);}
+.rel.on .rel-n{background:var(--grn); color:var(--card); border-style:solid; border-color:var(--grn);}
+.rel.on .rel-s{color:var(--grn);}

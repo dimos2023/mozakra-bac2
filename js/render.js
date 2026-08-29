@@ -103,7 +103,17 @@ export function renderSession(s, ctx) {
       isDone ? "✓ تمّت المذاكرة" : "علّم كمذاكَرة"}</button>
     <button class="tbtn" type="button" data-act="toggle-ans">إظهار الإجابات</button>
     <button class="tbtn" type="button" data-act="print">طباعة / PDF</button>
+    ${ctx.isTeacher ? `<button class="tbtn lock-btn${s.released ? " on" : ""}" type="button"
+        data-act="toggle-release" data-id="${escapeHTML(s.id)}">${
+        s.released ? "🔓 مفتوحة للطلبة" : "🔒 مقفولة"}</button>` : ""}
   </div>`;
+
+  if (ctx.isTeacher && !s.released) {
+    h += `<div class="box warn no-print" style="margin:0 0 20px">
+      <div class="bt"><span class="ic">🔒</span>الحصة دي مقفولة</div>
+      <p>الطلبة مش شايفينها، ومحتواها مش بيوصل أجهزتهم أصلًا.
+         اضغط <b>🔒 مقفولة</b> فوق عشان تفتحها — هتظهر عندهم فورًا.</p></div>`;
+  }
 
   h += `<header class="shead${s.rev ? " rev" : ""}">
     <div class="kicker">
@@ -272,6 +282,44 @@ function groupOptions(groups, selected, includeNone = true) {
     groups.map(g =>
       `<option value="${escapeHTML(g.id)}"${g.id === selected ? " selected" : ""}>${escapeHTML(g.name)}</option>`
     ).join("");
+}
+
+/* ---------------- لوحة فتح الحصص ---------------- */
+
+export function renderRelease(sessions) {
+  const open = sessions.filter(s => s.released).length;
+  const nextLocked = sessions.find(s => !s.released);
+
+  let h = `<header class="page-head"><h2>الحصص المتاحة للطلبة</h2>
+    <p>افتح الحصة يوم ما تشرحها. المقفولة <b>محتواها مش بيوصل أجهزة الطلبة أصلًا</b>.</p></header>`;
+
+  h += `<div class="stats">
+    <div class="stat"><div class="sv">${open}</div><div class="sl">حصة مفتوحة</div></div>
+    <div class="stat"><div class="sv">${sessions.length - open}</div><div class="sl">حصة مقفولة</div></div>
+    <div class="stat"><div class="sv">${nextLocked ? nextLocked.n : "—"}</div><div class="sl">التالية للفتح</div></div>
+  </div>`;
+
+  h += `<div class="topbar no-print"><span class="spacer"></span>
+    ${nextLocked ? `<button class="tbtn ok" type="button" data-act="release-next"
+        data-id="${escapeHTML(nextLocked.id)}">افتح الحصة ${nextLocked.n} التالية</button>` : ""}
+    <button class="tbtn" type="button" data-act="release-all">افتح الكل</button>
+    <button class="tbtn bad" type="button" data-act="lock-all">اقفل الكل عدا الأولى</button>
+  </div>`;
+
+  h += '<div class="rel-grid">';
+  sessions.forEach(s => {
+    h += `<button class="rel${s.released ? " on" : ""}" type="button"
+      data-act="toggle-release" data-id="${escapeHTML(s.id)}"
+      title="${s.released ? "اضغط للقفل" : "اضغط للفتح"}">
+      <span class="rel-n">${s.n}</span>
+      <span class="rel-t">${escapeHTML(s.rev ? s.ref : s.title)}</span>
+      <span class="rel-d">${escapeHTML(s.date)}</span>
+      <span class="rel-s">${s.released ? "🔓 مفتوحة" : "🔒 مقفولة"}</span>
+    </button>`;
+  });
+  h += "</div>";
+
+  return h;
 }
 
 export function renderAdmin(requests, groups, counts) {

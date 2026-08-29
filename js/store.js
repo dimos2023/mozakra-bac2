@@ -40,30 +40,70 @@ export function clearCache() {
   } catch {}
 }
 
-/** يجلب كل حصص الفصل الدراسي، من الكاش أولًا ثم من Firestore. */
-export async function loadSessions({ force = false } = {}) {
+/** يحوّل وثائق Firestore إلى قائمة حصص مرتّبة. */
+function toSessions(docs) {
+  return docs
+    .map(d => {
+      // المحتوى مخزّن كنص JSON في payload لأن Firestore
+      // لا يسمح بمصفوفة داخل مصفوفة (timing و terms و rows).
+      try {
+        const raw = d.data();
+        return { ...JSON.parse(raw.payload), released: raw.released === true };
+      } catch { console.warn("حصة تالفة:", d.id); return null; }
+    })
+    .filter(Boolean)
+    .filter(s => s.term === TERM)
+    .sort((a, b) => a.n - b.n);
+}
+
+/**
+ * استعلام الحصص. المدرس يطلب الكل، والطالب يطلب المفتوح فقط.
+ * قيد released == true إجباري للطالب — لأن قواعد الأمان ليست فلترًا،
+ * فبدونه يرفض الخادم الاستعلام كله.
+ */
+function sessionsQuery(isTeacher) {
+  const col = collection(db, "sessions");
+  return isTeacher ? col : query(col, where("released", "==", true));
+}
+
+/** يجلب الحصص، من الكاش أولًا ثم من Firestore. */
+export async function loadSessions({ force = false, isTeacher = false } = {}) {
   if (!force) {
     const cached = readCache();
     if (cached) return cached;
   }
-  // فلترة بمساواة واحدة فقط — يستخدم الفهرس التلقائي ولا يحتاج فهرسًا مركّبًا.
-  // الترتيب يتم في المتصفح لأن العدد صغير (20 حصة).
-  const q = query(collection(db, "sessions"), where("term", "==", TERM));
-  const snap = await getDocs(q);
-
-  // كل حصة مخزّنة كنص JSON في حقل payload — لأن Firestore
-  // لا يسمح بمصفوفة داخل مصفوفة (timing و terms و rows).
-  const data = snap.docs
-    .map(d => {
-      try { return JSON.parse(d.data().payload); }
-      catch { console.warn("حصة تالفة:", d.id); return null; }
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.n - b.n);
-
+  const snap = await getDocs(sessionsQuery(isTeacher));
+  const data = toSessions(snap.docs);
   if (!data.length) throw new Error("empty-content");
   writeCache(data);
   return data;
+}
+
+/**
+ * يراقب الحصص لحظيًا. أول ما المدرس يفتح حصة، تظهر عند الطلبة
+ * المفتوح عندهم الموقع فورًا بدون تحديث الصفحة.
+ * يرجع دالة لإيقاف المراقبة.
+ */
+export function watchSessions(isTeacher, onChange) {
+  return onSnapshot(sessionsQuery(isTeacher),
+    snap => {
+      const data = toSessions(snap.docs);
+      if (data.length) { writeCache(data); onChange(data); }
+    },
+    err => console.warn("تعذّرت مراقبة الحصص:", err.code || err.message)
+  );
+}
+
+/** يفتح أو يقفل حصة. للمدرس فقط. */
+export function setReleased(sessionId, released) {
+  return updateDoc(doc(db, "sessions", sessionId), { released: !!released });
+}
+
+/** يفتح أو يقفل مجموعة حصص دفعة واحدة. */
+export async function setReleasedBulk(sessionIds, released) {
+  const batch = writeBatch(db);
+  sessionIds.forEach(id => batch.update(doc(db, "sessions", id), { released: !!released }));
+  await batch.commit();
 }
 
 /* ---------------- تقدّم الطالب ---------------- */
