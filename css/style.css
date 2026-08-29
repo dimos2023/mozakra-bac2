@@ -597,6 +597,11 @@ html,body{overflow-x:hidden;}
 .s-clstroke {stroke:#A64B21; stroke-width:2.2; fill:none;}
 .s-claytxt  {fill:#8A3D1A; font-size:11.5px; font-weight:600;}
 
+/* صندوق داكن متعمَّد (رسم "الصندوق الأسود") — ثابت في كل الأوضاع */
+.s-dark   {fill:#2A3438;}
+.s-ondark {fill:#FBFCFB; font-size:14px; font-weight:600;}
+.s-ondark2{fill:#9FB0AA; font-size:11px;}
+
 /* في الوضع الليلي نلطّف بياض البطاقة قليلًا حتى لا تبهر العين */
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]) .fig-scroll{background:#EEF2F0; border-color:#5A6C67;}
