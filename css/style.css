@@ -355,16 +355,120 @@ td:first-child{font-weight:600; color:var(--ink);}
 }
 
 /* ================= الشاشات الصغيرة ================= */
+/* ================= الشريط العلوي للموبايل ================= */
+.mtop{display:none;}
+.scrim{display:none;}
+
 @media (max-width:900px){
-  .shell{grid-template-columns:1fr;}
-  .side{position:static; height:auto; border-inline-start:0; border-bottom:1px solid var(--line);}
-  .main{padding:24px 18px 70px;}
-  .shead h2{font-size:23px;}
+  /* --- الهيكل: المتن كامل العرض، والقائمة درج منزلق --- */
+  .shell{display:block;}
+
+  .mtop{
+    display:flex; align-items:center; gap:8px;
+    position:sticky; top:0; z-index:30;
+    background:var(--card); border-bottom:1px solid var(--line);
+    padding:8px 10px; padding-top:calc(8px + env(safe-area-inset-top));
+  }
+  .mbtn{
+    background:none; border:1px solid var(--line); border-radius:9px; color:var(--ink2);
+    width:40px; height:40px; display:grid; place-items:center; cursor:pointer; flex:none;
+  }
+  .mbtn:active{background:var(--card2);}
+  .mtitle{
+    flex:1; min-width:0; font-family:"Noto Kufi Arabic",sans-serif; font-size:14px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center;
+  }
+
+  /* الدرج ينزلق من جهة البداية (اليمين في العربية) */
+  .side{
+    position:fixed; top:0; bottom:0; right:0; z-index:40;
+    width:min(88vw,330px); height:100dvh; max-height:100dvh; overflow-y:auto;
+    border-inline-start:1px solid var(--line); border-bottom:0;
+    transform:translateX(100%); transition:transform .22s ease;
+    padding-top:calc(20px + env(safe-area-inset-top));
+    padding-bottom:calc(40px + env(safe-area-inset-bottom));
+    box-shadow:-18px 0 40px -22px rgba(0,0,0,.6);
+  }
+  .side.open{transform:none;}
+  .scrim{
+    display:block; position:fixed; inset:0; z-index:38;
+    background:rgba(6,14,16,.55); backdrop-filter:blur(2px);
+  }
+  @media (prefers-reduced-motion:reduce){ .side{transition:none;} }
+
+  /* --- المتن --- */
+  .main{padding:20px 15px calc(80px + env(safe-area-inset-bottom)); max-width:none;}
+  .shead h2{font-size:21px;}
+  .shead .sub{font-size:14px;}
+  .page-head h2{font-size:20px;}
+
+  /* --- لمسات أكبر --- */
+  .tbtn,.fbtn{padding:9px 15px; font-size:13.5px;}
+  .navbtn{padding:11px 9px;}
+  .link-btn{padding:11px 9px; font-size:14px;}
+  .iconbtn{min-width:36px; min-height:36px;}
+  .pbtn{padding:15px 17px;}
+  .rel{padding:15px;}
+
+  /* --- الرسوم: تتمرّر أفقيًا بدل ما تصغر وتبقى غير مقروءة --- */
+  .fig-scroll{padding:14px 12px; -webkit-overflow-scrolling:touch;}
+  .fig svg{min-width:540px;}
+  .fig figcaption{font-size:12px; text-align:start;}
+
+  /* --- الجداول والمحتوى --- */
+  .cbody{padding:15px 16px; font-size:14.5px;}
+  .chead{padding:13px 16px;}
+  .chead h3{font-size:16px;}
+  .box{padding:13px 15px;}
   .term{grid-template-columns:1fr; gap:2px;}
+  .terms{gap:8px;}
   .timing{flex-wrap:wrap;}
-  .tseg{flex:1 1 44%;}
+  .tseg{flex:1 1 44%; padding:7px 9px 8px;}
+  .tseg .tl{font-size:11px;}
   .pager{flex-direction:column;}
+  .q{padding:14px 16px;}
+  .hook{padding:15px 17px; font-size:15px;}
+  .obj{padding:14px 17px;}
+
+  /* --- شريط الأدوات: تمرير أفقي بدل التكديس --- */
+  .topbar{flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:18px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .topbar::-webkit-scrollbar{display:none;}
+  .topbar .tbtn,.topbar .chip{flex:none;}
+  .topbar .spacer{display:none;}
+  .filters{overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .filters .fbtn,.filters .chip{flex:none;}
+
+  .lock-note{padding:11px 13px; font-size:13px;}
+  .lock-note .bt{margin-bottom:4px;}
+
+  /* --- الإدارة --- */
+  .req-act{flex-direction:column; align-items:stretch;}
+  .req-act .tbtn{width:100%;}
+  .sel{min-width:0;}
+  .stats{grid-template-columns:1fr 1fr;}
+  .rel-grid,.grps{grid-template-columns:1fr;}
+  .newgrp{flex-direction:column;}
+  .newgrp input,.newgrp .tbtn{width:100%;}
+
+  /* --- شاشة الدخول --- */
+  .gate{padding:16px; align-items:start; padding-top:max(24px,env(safe-area-inset-top));}
+  .gate-card{padding:30px 22px 22px;}
+  .gate-card h1{font-size:19px;}
 }
+
+@media (max-width:420px){
+  .main{padding:16px 12px calc(70px + env(safe-area-inset-bottom));}
+  .shead h2{font-size:19px;}
+  .stats{grid-template-columns:1fr;}
+  .cbody{padding:14px 13px;}
+  .chead{padding:12px 13px;}
+}
+
+/* لا تمرير أفقي للصفحة نفسها مهما حصل */
+html,body{overflow-x:hidden;}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important; transition-duration:.01ms !important;}}
 
 /* ================= فورم طلب الانضمام ================= */

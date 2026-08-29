@@ -109,10 +109,9 @@ export function renderSession(s, ctx) {
   </div>`;
 
   if (ctx.isTeacher && !s.released) {
-    h += `<div class="box warn no-print" style="margin:0 0 20px">
-      <div class="bt"><span class="ic">🔒</span>الحصة دي مقفولة</div>
-      <p>الطلبة مش شايفينها، ومحتواها مش بيوصل أجهزتهم أصلًا.
-         اضغط <b>🔒 مقفولة</b> فوق عشان تفتحها — هتظهر عندهم فورًا.</p></div>`;
+    h += `<div class="box warn no-print lock-note" style="margin:0 0 18px">
+      <div class="bt"><span class="ic">🔒</span>مقفولة — الطلبة مش شايفينها</div>
+      <p>اضغط <b>🔒 مقفولة</b> فوق عشان تفتحها. هتظهر عندهم فورًا.</p></div>`;
   }
 
   h += `<header class="shead${s.rev ? " rev" : ""}">

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="مذكرة البرمجة والذكاء الاصطناعي">
+  <rect width="512" height="512" rx="112" fill="#0F6470"/>
+  <!-- كتاب مفتوح -->
+  <path d="M256 152c-34-24-76-34-118-30-12 1-22 11-22 24v186c0 14 12 25 26 24 38-4 76 5 106 25V152z"
+        fill="#FBFCFB"/>
+  <path d="M256 152c34-24 76-34 118-30 12 1 22 11 22 24v186c0 14-12 25-26 24-38-4-76 5-106 25V152z"
+        fill="#DCEBEC"/>
+  <!-- سطور -->
+  <g stroke="#0F6470" stroke-width="13" stroke-linecap="round" opacity=".55">
+    <path d="M154 206h64M154 250h64M154 294h48"/>
+    <path d="M294 206h64M294 250h64M294 294h48"/>
+  </g>
+  <!-- عقدة ذكاء اصطناعي -->
+  <g fill="#E2B551">
+    <circle cx="256" cy="152" r="26"/>
+    <circle cx="196" cy="392" r="17"/>
+    <circle cx="316" cy="392" r="17"/>
+  </g>
+  <g stroke="#E2B551" stroke-width="11" stroke-linecap="round" fill="none">
+    <path d="M256 178v40M256 218l-60 158M256 218l60 158"/>
+  </g>
+</svg>

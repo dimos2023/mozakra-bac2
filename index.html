@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>مذكرة البرمجة والذكاء الاصطناعي — الصف الثاني الثانوي</title>
 <meta name="description" content="مذكرة مبسّطة للبرمجة والذكاء الاصطناعي — الصف الثاني الثانوي، البكالوريا المصرية.">
-<meta name="theme-color" content="#0F6470">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📘</text></svg>">
+<meta name="theme-color" content="#0F6470" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1416" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مذكرة البرمجة">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -41,6 +48,22 @@
 
 <!-- ============ التطبيق ============ -->
 <div class="shell" id="shell" hidden>
+
+  <!-- شريط علوي للموبايل فقط -->
+  <header class="mtop" id="mtop">
+    <button class="mbtn" type="button" id="menuBtn" aria-label="القائمة" aria-expanded="false" aria-controls="side">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="mtitle" id="mtitle">المذكرة</div>
+    <button class="mbtn" type="button" id="mSearchBtn" aria-label="بحث">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+
+  <div class="scrim" id="scrim" hidden></div>
+
   <nav class="side" id="side">
     <div class="brand">
       <div class="eyebrow">Term 1 &middot; 2026/2027</div>

@@ -44,8 +44,45 @@ const el = {
   boot: $("boot"), gate: $("gate"), gateBody: $("gateBody"), shell: $("shell"),
   nav: $("nav"), main: $("main"), me: $("me"),
   progressNum: $("progressNum"), progressFill: $("progressFill"),
-  searchInput: $("searchInput")
+  searchInput: $("searchInput"),
+  side: $("side"), scrim: $("scrim"), menuBtn: $("menuBtn"),
+  mSearchBtn: $("mSearchBtn"), mtitle: $("mtitle")
 };
+
+/* ---------------- درج القائمة على الموبايل ---------------- */
+
+function drawer(open) {
+  el.side.classList.toggle("open", open);
+  el.scrim.hidden = !open;
+  el.menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  document.body.style.overflow = open ? "hidden" : "";
+}
+
+const isMobile = () => matchMedia("(max-width:900px)").matches;
+
+el.menuBtn.addEventListener("click", () => drawer(!el.side.classList.contains("open")));
+el.scrim.addEventListener("click", () => drawer(false));
+el.mSearchBtn.addEventListener("click", () => {
+  drawer(true);
+  setTimeout(() => el.searchInput.focus(), 240);
+});
+addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && el.side.classList.contains("open")) drawer(false);
+});
+// لو المستخدم لفّ الموبايل أو كبّر النافذة، نقفل الدرج حتى لا يعلق مفتوحًا
+addEventListener("resize", () => { if (!isMobile()) drawer(false); });
+
+/** يحدّث عنوان الشريط العلوي على الموبايل. */
+function setMobileTitle() {
+  const map = { search: "نتائج البحث", bank: "بنك الأسئلة",
+                students: "متابعة الطلبة", admin: "طلبات الانضمام", release: "الحصص المتاحة" };
+  if (state.view === "session") {
+    const s = state.sessions.find(x => x.n === state.current);
+    el.mtitle.textContent = s ? `حصة ${s.n} · ${s.rev ? s.ref : s.title}` : "المذكرة";
+  } else {
+    el.mtitle.textContent = map[state.view] || "المذكرة";
+  }
+}
 
 /* ---------------- شاشة الدخول ---------------- */
 
@@ -256,6 +293,7 @@ function go(view, arg) {
   state.view = view;
   if (view === "session" && arg) state.current = Number(arg);
   state.answersOpen = false;
+  drawer(false);
   draw();
   window.scrollTo(0, 0);
   if (view === "session") {
@@ -319,6 +357,7 @@ function draw() {
   }
   markNav();
   updateBadge();
+  setMobileTitle();
 }
 
 /** يضيف زر تبديل وضع المدرس/الطالب في شريط أدوات الحصة. */
@@ -557,7 +596,7 @@ el.searchInput.addEventListener("input", () => {
   searchTimer = setTimeout(() => {
     const v = el.searchInput.value.trim();
     state.searchTerm = v;
-    if (v.length >= 2) go("search");
+    if (v.length >= 2) { state.view = "search"; drawer(false); draw(); window.scrollTo(0, 0); }
     else if (state.view === "search") go("session", state.current);
   }, 220);
 });
