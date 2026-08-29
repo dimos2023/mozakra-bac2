@@ -164,6 +164,38 @@ export function renderSession(s, ctx) {
   return h;
 }
 
+/* ---------------- شاشة الحصة المقفولة ---------------- */
+
+/** يعرضها الطالب لما يفتح حصة لسه المدرس ما فتحهاش. */
+export function renderLocked(o, ctx = {}) {
+  const nextOpen = ctx.nextOpen;
+  return `
+  <div class="topbar no-print">
+    <span class="chip">${o.unit ? "الوحدة " + o.unit : "مراجعة نهائية"}</span>
+    ${o.pages ? `<span class="chip">${escapeHTML(o.pages)}</span>` : ""}
+  </div>
+
+  <header class="shead locked-head">
+    <div class="kicker">
+      <span class="bignum lock">🔒 حصة ${o.n}</span>
+      <span class="dateline">${escapeHTML(o.date || "")}</span>
+      ${o.ref ? `<span class="lref">${escapeHTML(o.ref)}</span>` : ""}
+    </div>
+    <h2>${escapeHTML(o.title || "")}</h2>
+    ${o.sub ? `<p class="sub">${escapeHTML(o.sub)}</p>` : ""}
+  </header>
+
+  <div class="locked-card">
+    <div class="locked-ico">🔒</div>
+    <h3>الحصة دي لسه مقفولة</h3>
+    <p>المدرس بيفتح كل حصة يوم ما يشرحها. أول ما يفتحها هتظهر عندك
+       <b>على طول</b> من غير ما تعمل أي حاجة.</p>
+    ${o.date ? `<p class="locked-when">موعدها المتوقّع: <b>${escapeHTML(o.date)}</b></p>` : ""}
+    ${nextOpen ? `<button class="gbtn primary" type="button" data-go="${nextOpen.n}"
+        style="max-width:340px;margin-inline:auto">ارجع لآخر حصة مفتوحة — حصة ${nextOpen.n}</button>` : ""}
+  </div>`;
+}
+
 /* ---------------- البحث ---------------- */
 
 /** يبني فهرسًا مسطّحًا قابلًا للبحث من كل الحصص. */

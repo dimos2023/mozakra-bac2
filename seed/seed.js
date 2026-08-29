@@ -88,30 +88,45 @@ async function seedContent() {
                    : existing.has(s.id) ? existing.get(s.id)
                    : (s.n === 1);
 
-    return { doc: { id: s.id, n: s.n, term: s.term, title: s.title, released, payload }, size };
+    // نكتب وثيقتين لكل حصة:
+    //   sessions/{id}  فهرس خفيف يراه كل الطلبة (بلا شرح)
+    //   content/{id}   المحتوى الثقيل، محمي بمفتاح released
+    return {
+      outline: {
+        id: s.id, n: s.n, term: s.term, unit: s.unit ?? 0,
+        title: s.title, sub: s.sub || "", date: s.date || "",
+        ref: s.ref || "", pages: s.pages || "", rev: s.rev === true,
+        released
+      },
+      content: { id: s.id, n: s.n, term: s.term, released, payload },
+      size
+    };
   });
 
-  const openCount = docs.filter(d => d.doc.released).length;
+  const openCount = docs.filter(d => d.outline.released).length;
   console.log(`   الفتح: ${openCount} مفتوحة · ${docs.length - openCount} مقفولة`);
 
   const total = docs.reduce((a, d) => a + d.size, 0);
   console.log(`   الحجم الكلي: ${(total / 1024).toFixed(0)} كيلوبايت` +
               ` · أكبر حصة: ${(Math.max(...docs.map(d => d.size)) / 1024).toFixed(0)} كيلوبايت`);
+  console.log(`   الفهرس: ${(docs.reduce((a, d) => a + JSON.stringify(d.outline).length, 0) / 1024).toFixed(1)} كيلوبايت فقط`);
 
   if (DRY) {
-    docs.forEach(d => console.log(`   [تجريبي] sessions/${d.doc.id} — ${d.doc.title}`));
+    docs.forEach(d => console.log(`   [تجريبي] sessions/${d.outline.id} + content/${d.outline.id} — ${d.outline.title}`));
     return;
   }
 
-  // Firestore يسمح بـ 500 عملية في الدفعة الواحدة
+  // Firestore يسمح بـ 500 عملية في الدفعة الواحدة (وثيقتان لكل حصة)
   let batch = db.batch(), count = 0, written = 0;
   for (const d of docs) {
-    batch.set(db.collection("sessions").doc(d.doc.id), d.doc);
-    if (++count === 400) { await batch.commit(); written += count; batch = db.batch(); count = 0; }
+    batch.set(db.collection("sessions").doc(d.outline.id), d.outline);
+    batch.set(db.collection("content").doc(d.content.id), d.content);
+    count += 2;
+    if (count >= 400) { await batch.commit(); written += count; batch = db.batch(); count = 0; }
   }
   if (count) { await batch.commit(); written += count; }
 
-  console.log(`   ✓ تم رفع ${written} حصة إلى sessions/`);
+  console.log(`   ✓ تم رفع ${written / 2} حصة (${written} وثيقة)`);
 }
 
 /* ---------------- رفع قائمة الطلبة ---------------- */

@@ -630,3 +630,20 @@ html,body{overflow-x:hidden;}
 .rel.on{border-color:var(--grn); background:var(--grnsoft);}
 .rel.on .rel-n{background:var(--grn); color:var(--card); border-style:solid; border-color:var(--grn);}
 .rel.on .rel-s{color:var(--grn);}
+
+/* ================= شاشة الحصة المقفولة ================= */
+.shead.locked-head{border-bottom-color:var(--line2); opacity:.9;}
+.bignum.lock{background:var(--card2); color:var(--ink3); border:1px dashed var(--line2);}
+.locked-card{
+  background:var(--card); border:1px dashed var(--line2); border-radius:14px;
+  padding:40px 26px; text-align:center; display:grid; gap:11px; justify-items:center;
+}
+.locked-ico{font-size:34px; line-height:1; opacity:.75;}
+.locked-card h3{font-size:18px; color:var(--ink);}
+.locked-card p{color:var(--ink2); font-size:14.5px; max-width:44ch; margin:0;}
+.locked-when{
+  background:var(--safsoft); color:var(--saf); border-radius:8px;
+  padding:8px 15px; font-size:13.5px !important; margin-top:4px !important;
+}
+.locked-when b{color:inherit;}
+.locked-card .gbtn{margin-top:10px;}

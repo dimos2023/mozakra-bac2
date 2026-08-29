@@ -11,99 +11,92 @@ import { db } from "./auth.js";
 import { TERM } from "./firebase-config.js";
 
 const CACHE_KEY = `memo:${TERM}:sessions`;
-const CACHE_VER_KEY = `memo:${TERM}:ver`;
-const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 ساعة
 
 /* ---------------- المحتوى ---------------- */
 
-function readCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const { at, data } = JSON.parse(raw);
-    if (!at || Date.now() - at > CACHE_TTL) return null;
-    if (!Array.isArray(data) || !data.length) return null;
-    return data;
-  } catch { return null; }
-}
-
-function writeCache(data) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
-  } catch { /* التخزين ممتلئ أو محجوب — نتجاهل */ }
-}
-
 export function clearCache() {
-  try {
-    localStorage.removeItem(CACHE_KEY);
-    localStorage.removeItem(CACHE_VER_KEY);
-  } catch {}
-}
-
-/** يحوّل وثائق Firestore إلى قائمة حصص مرتّبة. */
-function toSessions(docs) {
-  return docs
-    .map(d => {
-      // المحتوى مخزّن كنص JSON في payload لأن Firestore
-      // لا يسمح بمصفوفة داخل مصفوفة (timing و terms و rows).
-      try {
-        const raw = d.data();
-        return { ...JSON.parse(raw.payload), released: raw.released === true };
-      } catch { console.warn("حصة تالفة:", d.id); return null; }
-    })
-    .filter(Boolean)
-    .filter(s => s.term === TERM)
-    .sort((a, b) => a.n - b.n);
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
 }
 
 /**
- * استعلام الحصص. المدرس يطلب الكل، والطالب يطلب المفتوح فقط.
- * قيد released == true إجباري للطالب — لأن قواعد الأمان ليست فلترًا،
- * فبدونه يرفض الخادم الاستعلام كله.
+ * يجلب فهرس الحصص — وثائق خفيفة بلا محتوى، يراها كل طالب مقبول.
+ * ده اللي بيبني قائمة الحصص الجانبية، فالطالب يشوف الخطة كاملة.
  */
-function sessionsQuery(isTeacher) {
-  const col = collection(db, "sessions");
+export async function loadOutline() {
+  const snap = await getDocs(query(collection(db, "sessions"), where("term", "==", TERM)));
+  const rows = snap.docs.map(d => ({ ...d.data(), released: d.data().released === true }))
+                        .sort((a, b) => a.n - b.n);
+  if (!rows.length) throw new Error("empty-content");
+  return rows;
+}
+
+/** استعلام المحتوى: المدرس يطلب الكل، والطالب المفتوح فقط. */
+function contentQuery(isTeacher) {
+  const col = collection(db, "content");
   return isTeacher ? col : query(col, where("released", "==", true));
 }
 
-/** يجلب الحصص، من الكاش أولًا ثم من Firestore. */
-export async function loadSessions({ force = false, isTeacher = false } = {}) {
-  if (!force) {
-    const cached = readCache();
-    if (cached) return cached;
-  }
-  const snap = await getDocs(sessionsQuery(isTeacher));
-  const data = toSessions(snap.docs);
-  if (!data.length) throw new Error("empty-content");
-  writeCache(data);
-  return data;
+function toContent(docs) {
+  const map = new Map();
+  docs.forEach(d => {
+    try {
+      const raw = d.data();
+      if (raw.term && raw.term !== TERM) return;
+      // المحتوى مخزّن كنص JSON لأن Firestore لا يسمح بمصفوفة داخل مصفوفة
+      map.set(d.id, JSON.parse(raw.payload));
+    } catch { console.warn("حصة تالفة:", d.id); }
+  });
+  return map;
+}
+
+/** يجلب محتوى الحصص المتاحة للمستخدم الحالي. */
+export async function loadContent(isTeacher) {
+  const snap = await getDocs(contentQuery(isTeacher));
+  return toContent(snap.docs);
 }
 
 /**
- * يراقب الحصص لحظيًا. أول ما المدرس يفتح حصة، تظهر عند الطلبة
- * المفتوح عندهم الموقع فورًا بدون تحديث الصفحة.
- * يرجع دالة لإيقاف المراقبة.
+ * يراقب الفهرس والمحتوى لحظيًا. أول ما المدرس يفتح حصة،
+ * تظهر عند الطلبة المفتوح عندهم الموقع فورًا بدون تحديث.
  */
 export function watchSessions(isTeacher, onChange) {
-  return onSnapshot(sessionsQuery(isTeacher),
+  let outline = null, content = null;
+  const emit = () => { if (outline && content) onChange(outline, content); };
+
+  const un1 = onSnapshot(query(collection(db, "sessions"), where("term", "==", TERM)),
     snap => {
-      const data = toSessions(snap.docs);
-      if (data.length) { writeCache(data); onChange(data); }
+      outline = snap.docs.map(d => ({ ...d.data(), released: d.data().released === true }))
+                         .sort((a, b) => a.n - b.n);
+      emit();
     },
-    err => console.warn("تعذّرت مراقبة الحصص:", err.code || err.message)
-  );
+    err => console.warn("تعذّرت مراقبة الفهرس:", err.code || err.message));
+
+  const un2 = onSnapshot(contentQuery(isTeacher),
+    snap => { content = toContent(snap.docs); emit(); },
+    err => console.warn("تعذّرت مراقبة المحتوى:", err.code || err.message));
+
+  return () => { un1(); un2(); };
 }
 
-/** يفتح أو يقفل حصة. للمدرس فقط. */
+/** يفتح أو يقفل حصة — يقلب المفتاح في الفهرس والمحتوى معًا. */
 export function setReleased(sessionId, released) {
-  return updateDoc(doc(db, "sessions", sessionId), { released: !!released });
+  const batch = writeBatch(db);
+  batch.update(doc(db, "sessions", sessionId), { released: !!released });
+  batch.update(doc(db, "content",  sessionId), { released: !!released });
+  return batch.commit();
 }
 
 /** يفتح أو يقفل مجموعة حصص دفعة واحدة. */
 export async function setReleasedBulk(sessionIds, released) {
-  const batch = writeBatch(db);
-  sessionIds.forEach(id => batch.update(doc(db, "sessions", id), { released: !!released }));
-  await batch.commit();
+  // 500 عملية كحد أقصى للدفعة، وكل حصة عمليتان
+  for (let i = 0; i < sessionIds.length; i += 200) {
+    const batch = writeBatch(db);
+    sessionIds.slice(i, i + 200).forEach(id => {
+      batch.update(doc(db, "sessions", id), { released: !!released });
+      batch.update(doc(db, "content",  id), { released: !!released });
+    });
+    await batch.commit();
+  }
 }
 
 /* ---------------- تقدّم الطالب ---------------- */

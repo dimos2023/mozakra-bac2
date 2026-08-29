@@ -6,14 +6,14 @@ import {
   auth, signIn, signOutNow, catchRedirect, verifyAccess, onAuthStateChanged
 } from "./auth.js";
 import {
-  loadSessions, loadProgress, saveProgress, flushProgress, loadStudents, clearCache,
+  loadOutline, loadContent, loadProgress, saveProgress, flushProgress, loadStudents, clearCache,
   loadGroups, createGroup, renameGroup, deleteGroup,
   loadMyRequest, submitRequest, loadRequests, approveRequest, rejectRequest, deleteRequest,
   setStudentGroup, setStudentActive, removeStudent, watchAccess,
   watchSessions, setReleased, setReleasedBulk
 } from "./store.js";
 import {
-  UNITS, renderSession, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
+  UNITS, renderSession, renderLocked, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
   buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
@@ -23,6 +23,8 @@ const state = {
   user: null,
   role: "student",
   name: "",
+  outline: [],
+  content: new Map(),
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
@@ -256,7 +258,7 @@ function renderNav() {
       const done = state.progress.completed.includes(s.n);
       const b = document.createElement("button");
       b.type = "button";
-      const locked = state.role === "teacher" && !s.released;
+      const locked = !s.released;
       b.className = "navbtn" + (s.rev ? " rev" : "") + (done ? " done" : "") + (locked ? " locked" : "");
       b.dataset.n = s.n;
       b.innerHTML = `<span class="nn">${s.n}</span>
@@ -287,6 +289,17 @@ function renderProgress() {
   el.progressFill.style.width = total ? (done / total * 100) + "%" : "0%";
 }
 
+/** يدمج الفهرس مع المحتوى المتاح. الحصة بلا محتوى = مقفولة. */
+function mergeSessions() {
+  state.sessions = state.outline.map(o => {
+    const full = state.content.get(o.id);
+    return full
+      ? { ...full, id: o.id, released: o.released, locked: false }
+      : { ...o, locked: true };
+  });
+  state.index = buildIndex(state.sessions.filter(s => !s.locked));
+}
+
 /* ---------------- التوجيه ---------------- */
 
 function go(view, arg) {
@@ -307,6 +320,12 @@ function draw() {
   if (state.view === "session") {
     const s = state.sessions.find(x => x.n === state.current);
     if (!s) return;
+    if (s.locked) {
+      const opened = state.sessions.filter(x => !x.locked);
+      el.main.innerHTML = renderLocked(s, { nextOpen: opened[opened.length - 1] });
+      markNav(); updateBadge(); setMobileTitle();
+      return;
+    }
     el.main.innerHTML = renderSession(s, {
       isTeacher: state.role === "teacher",
       teacherMode: state.role === "teacher" && state.teacherMode,
@@ -647,13 +666,15 @@ async function boot(user) {
   gateWaiting("جارٍ تحميل المذكرة…");
 
   try {
-    const [sessions, progress] = await Promise.all([
-      loadSessions({ isTeacher: res.role === "teacher" }),
+    const [outline, content, progress] = await Promise.all([
+      loadOutline(),
+      loadContent(res.role === "teacher"),
       loadProgress(user.uid)
     ]);
-    state.sessions = sessions;
-    state.index = buildIndex(sessions);
+    state.outline = outline;
+    state.content = content;
     state.progress = progress;
+    mergeSessions();
   } catch (e) {
     const msg = e.message === "empty-content"
       ? "المحتوى غير موجود في قاعدة البيانات.<br>شغّل <span class=\"mail\">npm run seed</span> من مجلد seed لرفع المذكرة."
@@ -690,14 +711,17 @@ async function boot(user) {
   el.shell.hidden = false;
 
   // الحصص لحظيًا: أول ما المدرس يفتح حصة تظهر عند الطلبة فورًا
-  watchSessions(state.role === "teacher", list => {
-    const before = state.sessions.length;
-    state.sessions = list;
-    state.index = buildIndex(list);
-    if (!list.some(x => x.n === state.current)) state.current = list[0]?.n || 1;
+  watchSessions(state.role === "teacher", (outline, content) => {
+    const wasLocked = state.sessions.find(x => x.n === state.current)?.locked;
+    state.outline = outline;
+    state.content = content;
+    mergeSessions();
+    if (!state.sessions.some(x => x.n === state.current)) state.current = state.sessions[0]?.n || 1;
     renderNav();
     renderProgress();
-    if (list.length !== before || state.view === "release") draw();
+    // نعيد الرسم لو حالة الحصة الحالية اتغيّرت أو إحنا في صفحة الفتح
+    const nowLocked = state.sessions.find(x => x.n === state.current)?.locked;
+    if (wasLocked !== nowLocked || state.view === "release") draw();
   });
 
   // إلغاء الوصول لحظيًا: لو المدرس حذف الطالب أو أوقفه، يخرج فورًا
