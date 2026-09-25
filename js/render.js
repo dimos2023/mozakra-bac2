@@ -2,7 +2,7 @@
 //  محرك العرض — بناء صفحات الحصص والبحث وبنك الأسئلة والطلبة
 // ============================================================
 
-import { units } from "./track.js";
+import { units, track } from "./track.js";
 
 /** وحدات المسار المعروض حاليًا — تتغيّر مع تبديل الصف. */
 export const UNITS = units();
@@ -884,6 +884,9 @@ export function joinFormHTML(user, groups, existing) {
     ${resubmit ? '<div class="gate-msg err">طلبك السابق اترفض. تقدر تعدّل بياناتك وتبعت تاني.</div>' : ""}
     <p class="gate-note">حسابك <span class="mail">${escapeHTML(user.email || "")}</span> مش مسجَّل لسه.
        اعمل طلب انضمام والمدرس هيراجعه.</p>
+    <div class="gate-msg">طلبك هيتبعت لمجموعة <b>${escapeHTML(track().grade)}</b>
+       — ميعادها ${escapeHTML(track().slot)}.<br>
+       لو ده مش صفّك، غيّره من الزرار اللي فوق قبل ما تبعت.</div>
     <div class="jform">
       <label class="fld">
         <span>اسمك بالكامل</span>

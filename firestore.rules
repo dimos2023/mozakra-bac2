@@ -71,7 +71,7 @@ service cloud.firestore {
                     && request.resource.data.email == mail()
                     && request.resource.data.status == 'pending'
                     && request.resource.data.keys().hasOnly(
-                         ['email','name','photo','groupId','note','status','createdAt']);
+                         ['email','name','photo','track','groupId','note','status','createdAt']);
 
       // إعادة الإرسال بعد الرفض، أو تعديل الطلب أثناء الانتظار
       allow update: if isSignedIn()
@@ -79,7 +79,7 @@ service cloud.firestore {
                     && request.resource.data.email == resource.data.email
                     && request.resource.data.status == 'pending'
                     && request.resource.data.keys().hasOnly(
-                         ['email','name','photo','groupId','note','status','createdAt']);
+                         ['email','name','photo','track','groupId','note','status','createdAt']);
 
       // المدرس يستعرض ويقرّر ويحذف
       allow list, update, delete: if isTeacher();
@@ -196,10 +196,19 @@ service cloud.firestore {
     // ---------- الحضور ----------
     // الطالب يسجّل حضوره في الحصة التي *فتح المدرس* تسجيلها فقط،
     // فلا يستطيع تجميع حضور حصص فائتة لاحقًا.
-    function attOpen() {
+    // نافذة الحضور مستقلة لكل صف: open_term1 و open_g1t1
+    // (openSession هو الحقل القديم للصف الثاني، نقبله للتوافق)
+    function attCfg() {
       return exists(/databases/$(database)/documents/config/attendance)
-        ? get(/databases/$(database)/documents/config/attendance).data.openSession
-        : '';
+        ? get(/databases/$(database)/documents/config/attendance).data
+        : {};
+    }
+    function attOpenIs(sid) {
+      return sid != '' && (
+        attCfg().get('open_term1', '') == sid ||
+        attCfg().get('open_g1t1', '')  == sid ||
+        attCfg().get('openSession', '') == sid
+      );
     }
 
     match /attendance/{aid} {
@@ -212,7 +221,7 @@ service cloud.firestore {
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.email == mail()
                     && request.resource.data.by == 'student'
-                    && request.resource.data.sessionId == attOpen()
+                    && attOpenIs(request.resource.data.sessionId)
                     && request.resource.data.keys().hasOnly(
                          ['uid','email','name','n','sessionId','at','by']);
 

@@ -8,7 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { db } from "./auth.js";
-import { termKey } from "./track.js";
+import { termKey, track } from "./track.js";
 
 const CACHE_KEY = () => `memo:${termKey()}:sessions`;
 
@@ -101,26 +101,43 @@ export async function setReleasedBulk(sessionIds, released) {
 
 /* ---------------- الحضور ---------------- */
 
-/** أي حصة تسجيلها مفتوح الآن. سلسلة فارغة = مقفول. */
+/** اسم حقل نافذة الحضور الخاص بالمسار الحالي. */
+const attField = () => `open_${termKey()}`;
+
+/** يقرأ نافذة الحضور من الوثيقة مع دعم الحقل القديم للصف الثاني. */
+function readAttOpen(d) {
+  if (!d) return "";
+  const v = d[attField()];
+  if (typeof v === "string") return v;
+  return termKey() === "term1" ? (d.openSession || "") : "";
+}
+
+/** أي حصة تسجيلها مفتوح الآن في المسار الحالي. سلسلة فارغة = مقفول. */
 export async function loadAttendanceOpen() {
   try {
     const snap = await getDoc(doc(db, "config", "attendance"));
-    return snap.exists() ? (snap.data().openSession || "") : "";
+    return snap.exists() ? readAttOpen(snap.data()) : "";
   } catch { return ""; }
 }
 
 /** يراقب نافذة الحضور لحظيًا — فيظهر الزر عند الطالب فور فتحها. */
 export function watchAttendanceOpen(onChange) {
   return onSnapshot(doc(db, "config", "attendance"),
-    snap => onChange(snap.exists() ? (snap.data().openSession || "") : ""),
+    snap => onChange(snap.exists() ? readAttOpen(snap.data()) : ""),
     err => console.warn("تعذّرت مراقبة الحضور:", err.code || err.message));
 }
 
 /** المدرس يفتح أو يقفل تسجيل الحضور. سلسلة فارغة = قفل. */
 export function setAttendanceOpen(sessionId) {
-  return setDoc(doc(db, "config", "attendance"),
-    { openSession: sessionId || "", changedAt: serverTimestamp() }, { merge: true });
+  const id = sessionId || "";
+  const body = { [attField()]: id, changedAt: serverTimestamp() };
+  // نُبقي الحقل القديم متزامنًا للصف الثاني حتى لا تتأثر أي بيانات سابقة
+  if (termKey() === "term1") body.openSession = id;
+  return setDoc(doc(db, "config", "attendance"), body, { merge: true });
 }
+
+/** هل سجلّ الحضور ده تابع للمسار المعروض؟ (المعرّف = termKey-NN_uid) */
+const inTrack = row => String(row.sessionId || "").startsWith(termKey() + "-");
 
 /** الطالب يسجّل حضوره. القواعد ترفض لو النافذة مقفولة أو الحصة غير المفتوحة. */
 export function checkIn(user, name, session) {
@@ -154,7 +171,7 @@ export function setAttendance(student, session, present) {
 export async function loadMyAttendance(uid) {
   try {
     const snap = await getDocs(query(collection(db, "attendance"), where("uid", "==", uid)));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(inTrack);
   } catch { return []; }
 }
 
@@ -164,7 +181,7 @@ export async function loadAllAttendance() {
   return snap.docs.map(d => ({
     id: d.id, ...d.data(),
     atDate: d.data().at?.toDate?.() || null
-  }));
+  })).filter(inTrack);
 }
 
 /* ---------------- الاشتراك والدفع ---------------- */
@@ -389,6 +406,7 @@ export function submitRequest(user, { name, groupId = "", note = "" }) {
     email: (user.email || "").toLowerCase(),
     name: String(name).trim(),
     photo: user.photoURL || "",
+    track: track().id,
     groupId,
     note: String(note).trim().slice(0, 300),
     status: "pending",
@@ -401,6 +419,8 @@ export async function loadRequests() {
   const snap = await getDocs(collection(db, "requests"));
   return snap.docs
     .map(d => ({ uid: d.id, ...d.data(), createdAtDate: d.data().createdAt?.toDate?.() || null }))
+    // كل صف يرى طلباته فقط — الطلبات القديمة بلا وسم تُعدّ للصف الثاني
+    .filter(r => (r.track || "g2") === track().id)
     .sort((a, b) => (b.createdAtDate?.getTime() || 0) - (a.createdAtDate?.getTime() || 0));
 }
 
@@ -412,6 +432,7 @@ export async function approveRequest(req, { groupId = "", role = "student" } = {
     name: req.name || email.split("@")[0],
     role,
     active: true,
+    track: req.track || track().id,
     groupId
   }, { merge: true });
   batch.update(doc(db, "requests", req.uid), {
@@ -473,6 +494,9 @@ export async function loadStudents() {
   listSnap.forEach(d => {
     const email = d.id.toLowerCase();
     const a = d.data() || {};
+    // الطلبة القدامى بلا وسم صفّ تُعدّ للصف الثاني · المدرس يظهر في الصفّين
+    const isTeacherRow = a.role === "teacher";
+    if (!isTeacherRow && (a.track || "g2") !== track().id) return;
     const u = users.get(email);
     const p = prog.get(email);
     rows.push({
@@ -482,6 +506,7 @@ export async function loadStudents() {
       name: a.name || u?.name || email.split("@")[0],
       role: a.role === "teacher" ? "teacher" : "student",
       active: a.active !== false,
+      track: a.track || "g2",
       groupId: a.groupId || "",
       lastLogin: u?.lastLogin?.toDate?.() || null,
       loginCount: u?.loginCount || 0,
