@@ -8,6 +8,7 @@
  *    npm run seed -- --content رفع المحتوى فقط
  *    npm run seed -- --users   رفع قائمة الطلبة فقط
  *    npm run seed -- --dry     عرض ما سيحدث دون كتابة
+ *    npm run seed -- --content --file=content-g1t1.json   رفع مسار الصف الأول
  *
  *  يحتاج ملف service-account.json في نفس المجلد (لا تضعه على GitHub).
  * ============================================================ */
@@ -25,7 +26,8 @@ const doAll = !only.content && !only.users;
 const DRY = args.includes("--dry");
 
 const KEY_PATH      = join(HERE, "service-account.json");
-const CONTENT_PATH  = join(HERE, "content-term1.json");
+const fileArg = (args.find(a => a.startsWith("--file=")) || "").slice(7);
+const CONTENT_PATH  = join(HERE, fileArg || "content-term1.json");
 const STUDENTS_PATH = join(HERE, "students.csv");
 
 function die(msg) {

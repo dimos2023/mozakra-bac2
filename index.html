@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>مذكرة البرمجة والذكاء الاصطناعي — الصف الثاني الثانوي</title>
+<title>مذكرة البرمجة والذكاء الاصطناعي</title>
 <meta name="description" content="مذكرة مبسّطة للبرمجة والذكاء الاصطناعي — الصف الثاني الثانوي، البكالوريا المصرية.">
 <meta name="theme-color" content="#0F6470" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B1416" media="(prefers-color-scheme: dark)">
@@ -17,17 +17,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 
 <!-- ============ شاشة الدخول ============ -->
 <div class="gate" id="gate">
   <div class="gate-card">
-    <div class="gate-mark">📘</div>
-    <div class="gate-eyebrow">Term 1 &middot; 2026/2027</div>
-    <h1>البرمجة والذكاء الاصطناعي</h1>
-    <p class="gate-sub">الصف الثاني الثانوي — البكالوريا المصرية<br>مذكرة الشرح المبسّطة</p>
+    <div class="trackswitch" role="group" aria-label="اختيار الصف الدراسي">
+      <button type="button" data-track-btn="g1">أولى ثانوي</button>
+      <button type="button" data-track-btn="g2">ثانية ثانوي</button>
+    </div>
+    <div class="gate-mark" data-track-mark>📘</div>
+    <div class="gate-eyebrow" data-track-eyebrow>Term 1 &middot; 2026/2027</div>
+    <h1 data-track-title>البرمجة والذكاء الاصطناعي</h1>
+    <p class="gate-sub"><span data-track-sub>الصف الثاني الثانوي — البكالوريا المصرية</span><br>
+       مذكرة الشرح المبسّطة &middot; <b data-track-slot>الجمعة · 6 م</b></p>
 
     <div class="gate-body" id="gateBody">
       <p class="gate-note">سجّل الدخول بحساب جوجل المسجَّل لدى المدرس للوصول إلى المذكرة.</p>
@@ -66,9 +71,14 @@
 
   <nav class="side" id="side">
     <div class="brand">
-      <div class="eyebrow">Term 1 &middot; 2026/2027</div>
-      <h1>البرمجة والذكاء الاصطناعي</h1>
-      <p>الصف الثاني الثانوي — البكالوريا المصرية</p>
+      <div class="trackswitch" role="group" aria-label="اختيار الصف الدراسي">
+        <button type="button" data-track-btn="g1">أولى ثانوي</button>
+        <button type="button" data-track-btn="g2">ثانية ثانوي</button>
+      </div>
+      <div class="eyebrow" data-track-eyebrow>Term 1 &middot; 2026/2027</div>
+      <h1 data-track-title>البرمجة والذكاء الاصطناعي</h1>
+      <p><span data-track-sub>الصف الثاني الثانوي — البكالوريا المصرية</span><br>
+         موعد الحصة: <b data-track-slot>الجمعة · 6 م</b></p>
     </div>
 
     <div class="me" id="me"></div>

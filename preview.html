@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>معاينة حصة — بدون تسجيل دخول</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css?v=7">
+<style>
+  body{margin:0}
+  .pvbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+         padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+  .pvbar select,.pvbar button{font:inherit;font-size:13px;padding:5px 10px;
+         border:1px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink)}
+  .pvwrap{max-width:860px;margin:0 auto;padding:18px 16px 60px}
+</style>
+</head>
+<body>
+<!--
+  صفحة معاينة محلية للمدرس: بتقرأ ملف المحتوى من مجلد seed مباشرة
+  وتعرض الحصة بنفس شكل الموقع، من غير Firebase ولا تسجيل دخول.
+  افتحها عبر خادم محلي:  npx serve .   ثم /preview.html
+-->
+<div class="pvbar">
+  <label>الملف:
+    <select id="file">
+      <option value="seed/content-g1t1.json">أولى ثانوي — content-g1t1.json</option>
+      <option value="seed/content-term1.json">ثانية ثانوي — content-term1.json</option>
+    </select>
+  </label>
+  <label>الحصة: <select id="sess"></select></label>
+  <label><input type="checkbox" id="teacher" checked> وضع المدرس (إظهار الإجابات)</label>
+  <span id="msg" style="color:var(--ink3);font-size:12.5px"></span>
+</div>
+<div class="pvwrap" id="out"></div>
+
+<script type="module">
+import { renderSession } from "./js/render.js";
+
+const $ = id => document.getElementById(id);
+let data = [];
+
+async function loadFile() {
+  $("msg").textContent = "جارٍ التحميل…";
+  try {
+    data = await (await fetch($("file").value)).json();
+  } catch (e) {
+    $("msg").textContent = "تعذّر تحميل الملف — شغّل الصفحة من خادم محلي (npx serve .)";
+    return;
+  }
+  $("sess").innerHTML = data.map(s => `<option value="${s.n}">${s.n} — ${s.title}</option>`).join("");
+  $("msg").textContent = `${data.length} حصة`;
+  draw();
+}
+
+function draw() {
+  const s = data.find(x => x.n === Number($("sess").value)) || data[0];
+  if (!s) return;
+  $("out").innerHTML = renderSession(s, {
+    teacherMode: $("teacher").checked, isDone: false, prev: null, next: null
+  });
+  document.querySelectorAll(".ans").forEach(a => { a.hidden = !$("teacher").checked; });
+}
+
+$("file").addEventListener("change", loadFile);
+$("sess").addEventListener("change", draw);
+$("teacher").addEventListener("change", draw);
+loadFile();
+</script>
+</body>
+</html>

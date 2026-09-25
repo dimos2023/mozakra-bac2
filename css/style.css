@@ -734,3 +734,35 @@ td.att-total{white-space:nowrap; min-width:96px;}
   .attx{width:26px; height:26px;}
 }
 @media print{ .att{display:none;} }
+
+/* ============================================================
+   مبدّل الصف — أولى / ثانية ثانوي
+   ============================================================ */
+.trackswitch{
+  display:flex; gap:4px; padding:4px; margin-bottom:12px;
+  background:var(--card2, #EDF2F1); border:1px solid var(--line2); border-radius:11px;
+}
+.trackswitch button{
+  flex:1; font:inherit; font-size:12.5px; font-weight:600;
+  font-family:"Noto Kufi Arabic","IBM Plex Sans Arabic",sans-serif;
+  padding:7px 6px; border:0; border-radius:8px; cursor:pointer;
+  background:transparent; color:var(--ink3); transition:background .15s, color .15s;
+  white-space:nowrap;
+}
+.trackswitch button:hover{ color:var(--ink); }
+.trackswitch button.on{
+  background:var(--teal); color:#fff;
+  box-shadow:0 1px 2px rgba(15,100,112,.28);
+}
+.gate-card .trackswitch{ max-width:280px; margin:0 auto 16px; }
+
+/* الفقرة الإنجليزية المقابلة — مذكرة اللغات */
+.enp{
+  direction:ltr; text-align:left; unicode-bidi:isolate;
+  font-family:"IBM Plex Sans Arabic","Segoe UI",system-ui,sans-serif;
+  font-size:13px; line-height:1.65; color:var(--ink3);
+  border-inline-start:2px solid var(--line2); padding-inline-start:10px;
+  margin:6px 0 12px;
+}
+.def .enp{ margin-bottom:0; border-color:var(--teal); }
+td .enp, li .enp{ font-size:12.2px; margin:4px 0 0; }

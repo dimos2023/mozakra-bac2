@@ -8,14 +8,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 import { db } from "./auth.js";
-import { TERM } from "./firebase-config.js";
+import { termKey } from "./track.js";
 
-const CACHE_KEY = `memo:${TERM}:sessions`;
+const CACHE_KEY = () => `memo:${termKey()}:sessions`;
 
 /* ---------------- المحتوى ---------------- */
 
 export function clearCache() {
-  try { localStorage.removeItem(CACHE_KEY); } catch {}
+  try { localStorage.removeItem(CACHE_KEY()); } catch {}
 }
 
 /**
@@ -23,7 +23,7 @@ export function clearCache() {
  * ده اللي بيبني قائمة الحصص الجانبية، فالطالب يشوف الخطة كاملة.
  */
 export async function loadOutline() {
-  const snap = await getDocs(query(collection(db, "sessions"), where("term", "==", TERM)));
+  const snap = await getDocs(query(collection(db, "sessions"), where("term", "==", termKey())));
   const rows = snap.docs.map(d => ({ ...d.data(), released: d.data().released === true }))
                         .sort((a, b) => a.n - b.n);
   if (!rows.length) throw new Error("empty-content");
@@ -41,7 +41,7 @@ function toContent(docs) {
   docs.forEach(d => {
     try {
       const raw = d.data();
-      if (raw.term && raw.term !== TERM) return;
+      if (raw.term && raw.term !== termKey()) return;
       // المحتوى مخزّن كنص JSON لأن Firestore لا يسمح بمصفوفة داخل مصفوفة
       map.set(d.id, JSON.parse(raw.payload));
     } catch { console.warn("حصة تالفة:", d.id); }
@@ -63,7 +63,7 @@ export function watchSessions(isTeacher, onChange) {
   let outline = null, content = null;
   const emit = () => { if (outline && content) onChange(outline, content); };
 
-  const un1 = onSnapshot(query(collection(db, "sessions"), where("term", "==", TERM)),
+  const un1 = onSnapshot(query(collection(db, "sessions"), where("term", "==", termKey())),
     snap => {
       outline = snap.docs.map(d => ({ ...d.data(), released: d.data().released === true }))
                          .sort((a, b) => a.n - b.n);

@@ -10,6 +10,8 @@ seed/*-firebase-adminsdk-*.json
 seed/content-*.json
 seed/*.backup.json
 seed/students.csv
+# مولّدات المحتوى — فيها نص المذكرة نفسه
+seed/build-*.js
 
 # ── أدوات ────────────────────────────────────────────
 node_modules/

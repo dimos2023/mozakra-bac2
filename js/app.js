@@ -16,6 +16,7 @@ import {
   loadAttendanceOpen, watchAttendanceOpen, setAttendanceOpen, checkIn, setAttendance,
   loadMyAttendance, loadAllAttendance
 } from "./store.js";
+import { wireTrackSwitch, track } from "./track.js";
 import {
   UNITS, renderSession, renderLocked, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
   renderBilling, billingBanner, claimFormHTML,
@@ -53,6 +54,8 @@ const state = {
   claiming: false,
   searchTerm: ""
 };
+
+wireTrackSwitch();
 
 const $ = id => document.getElementById(id);
 const el = {
