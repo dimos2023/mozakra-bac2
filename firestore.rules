@@ -120,7 +120,7 @@ service cloud.firestore {
       allow write: if isAllowed()
                    && request.auth.uid == uid
                    && request.resource.data.keys().hasOnly(
-                        ['completed','lastSession','updatedAt','email']);
+                        ['completed','lastSession','updatedAt','email','tracks']);
 
       allow delete: if isTeacher();
     }

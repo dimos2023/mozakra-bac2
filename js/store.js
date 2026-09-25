@@ -268,9 +268,13 @@ export async function loadProgress(uid) {
     const snap = await getDoc(doc(db, "progress", uid));
     if (!snap.exists()) return { completed: [], lastSession: 1 };
     const d = snap.data() || {};
+    // المسار الافتراضي (الصف الثاني) محفوظ في الحقول العُليا للتوافق مع
+    // البيانات القديمة، وأي مسار آخر له خانته داخل tracks.
+    const t = termKey();
+    const src = t === "term1" ? d : ((d.tracks || {})[t] || {});
     return {
-      completed: Array.isArray(d.completed) ? d.completed.slice() : [],
-      lastSession: Number(d.lastSession) || 1
+      completed: Array.isArray(src.completed) ? src.completed.slice() : [],
+      lastSession: Number(src.lastSession) || 1
     };
   } catch {
     return { completed: [], lastSession: 1 };
@@ -292,12 +296,12 @@ export async function flushProgress() {
   const { uid, email, progress } = pending;
   pending = null;
   try {
-    await setDoc(doc(db, "progress", uid), {
-      email,
-      completed: progress.completed,
-      lastSession: progress.lastSession,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const t = termKey();
+    const body = t === "term1"
+      ? { completed: progress.completed, lastSession: progress.lastSession }
+      : { tracks: { [t]: { completed: progress.completed, lastSession: progress.lastSession } } };
+    await setDoc(doc(db, "progress", uid),
+      { email, updatedAt: serverTimestamp(), ...body }, { merge: true });
   } catch (e) {
     console.warn("تعذّر حفظ التقدّم:", e.code || e.message);
   }
