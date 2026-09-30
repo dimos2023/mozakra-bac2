@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>التوقيع الرقمي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="signature" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="التوقيع الرقمي بيثبت حاجتين: إن المستند <b>من صاحبه فعلاً</b>، وإنه <b>ماتعدّلش</b>. المرسل بيوقّع بمفتاحه <b>الخاص</b>، وأي حد يقدر يتحقق بمفتاحه <b>العام</b>. وده كمان بيحقق <b>عدم التنصل</b>: صاحب التوقيع مايقدرش ينكر إنه وقّع."></div>
+
+  <div class="card tool">
+    <h2>🏫 المدرسة بتصدر شهادة رقمية</h2>
+    <p class="hint">مفتاح المدرسة: <span id="keyState" class="pill info">⏳ جاري التوليد...</span></p>
+    <div class="grid-2">
+      <div>
+        <h3>1) التوقيع (عند المدرسة — بالمفتاح الخاص)</h3>
+        <label for="sDoc">المستند</label>
+        <textarea id="sDoc">شهادة: الطالب يوسف أحمد اجتاز مادة البرمجة بتقدير جيد جدًا</textarea>
+        <div class="row"><button class="btn" id="sSign" type="button">✍️ وقّع بالمفتاح الخاص للمدرسة</button></div>
+        <label>التوقيع الرقمي</label>
+        <div class="box ltr" id="sSig" style="font-size:.8rem">—</div>
+        <div class="row"><button class="btn ghost small" id="sSend" type="button">ابعت المستند + التوقيع ←</button></div>
+      </div>
+      <div>
+        <h3>2) التحقق (عند الشركة اللي بتوظّف — بالمفتاح العام)</h3>
+        <label for="vDoc">المستند اللي وصل</label>
+        <textarea id="vDoc"></textarea>
+        <label for="vSig">التوقيع اللي وصل</label>
+        <textarea id="vSig" class="ltr" style="min-height:60px"></textarea>
+        <div class="row"><button class="btn" id="vCheck" type="button">🔍 تحقق بالمفتاح العام للمدرسة</button></div>
+        <div class="result" id="vRes"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="sign">
+    <div class="task-head"><h3>وقّع وتحقق</h3><span class="task-badge"></span></div>
+    <p>وقّع الشهادة، ابعتها، وبعدين تحقق منها من الناحية التانية. المفروض تطلع <b>سليمة</b>.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="tamper">
+    <div class="task-head"><h3>حاول تزوّر الشهادة 😈</h3><span class="task-badge"></span></div>
+    <p>في خانة "المستند اللي وصل" غيّر <b>جيد جدًا</b> لـ<b>امتياز</b> (أو أي تعديل صغير) وسيب نفس التوقيع، وبعدين اضغط تحقق. هل الشركة هتكتشف؟</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q1">
+    <div class="task-head"><h3>مين بيستخدم أنهي مفتاح؟</h3><span class="task-badge"></span></div>
+    <p><b>1)</b> المدرسة بتعمل التوقيع باستخدام:</p>
+    <div class="mcq choices" data-answer="b">
+      <label class="choice"><input type="radio" name="sq1" value="a"> المفتاح العام للمدرسة</label>
+      <label class="choice"><input type="radio" name="sq1" value="b"> المفتاح الخاص للمدرسة</label>
+      <label class="choice"><input type="radio" name="sq1" value="c"> المفتاح العام للشركة</label>
+    </div>
+    <p style="margin-top:12px"><b>2)</b> الشركة بتتحقق من التوقيع باستخدام:</p>
+    <div class="mcq choices" data-answer="a" data-explain="الخاص للتوقيع (محدش يقدر يقلّده)، والعام للتحقق (أي حد يقدر يتأكد).">
+      <label class="choice"><input type="radio" name="sq2" value="a"> المفتاح العام للمدرسة</label>
+      <label class="choice"><input type="radio" name="sq2" value="b"> المفتاح الخاص للمدرسة</label>
+      <label class="choice"><input type="radio" name="sq2" value="c"> المفتاح الخاص للشركة</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q2">
+    <div class="task-head"><h3>رتّب خطوات التوقيع الرقمي والتحقق</h3><span class="task-badge"></span></div>
+    <ol class="order-list" data-order="a,b,c,d,e,f">
+      <li data-id="a">المرسل يحسب <b>قيمة الهاش</b> للمستند بدالة التجزئة</li>
+      <li data-id="b">المرسل يشفّر قيمة الهاش بـ<b>مفتاحه الخاص</b> ← ده التوقيع الرقمي</li>
+      <li data-id="c">المرسل يبعت المستند + التوقيع</li>
+      <li data-id="d">المستلم يفك التوقيع بـ<b>المفتاح العام للمرسل</b> ويطلّع قيمة الهاش الأصلية</li>
+      <li data-id="e">المستلم يحسب هاش جديد للمستند اللي وصله بنفس الدالة</li>
+      <li data-id="f">المستلم يقارن القيمتين: لو متطابقين ← المستند من المرسل وماتعدّلش</li>
+    </ol>
+    <div class="row"><button class="btn" data-check-order type="button">تحقق من الترتيب</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const ALG = { name: 'ECDSA', namedCurve: 'P-256' };
+  const SIGN = { name: 'ECDSA', hash: 'SHA-256' };
+  let school = null, signed = null;  // signed = { doc, sig }
+
+  crypto.subtle.generateKey(ALG, false, ['sign', 'verify']).then(k => {
+    school = k;
+    document.getElementById('keyState').className = 'pill ok';
+    document.getElementById('keyState').textContent = '✓ جاهز (ECDSA P-256)';
+  });
+
+  document.getElementById('sSign').onclick = async () => {
+    if (!school) return;
+    const doc = document.getElementById('sDoc').value;
+    const sig = b64(await crypto.subtle.sign(SIGN, school.privateKey, enc.encode(doc)));
+    signed = { doc, sig };
+    document.getElementById('sSig').textContent = sig;
+  };
+  document.getElementById('sSend').onclick = () => {
+    if (!signed) return toast('وقّع الأول');
+    document.getElementById('vDoc').value = signed.doc;
+    document.getElementById('vSig').value = signed.sig;
+  };
+
+  document.getElementById('vCheck').onclick = async () => {
+    const doc = document.getElementById('vDoc').value, sigTxt = document.getElementById('vSig').value.trim();
+    if (!doc || !sigTxt) return showResult('#vRes', 'info', 'محتاج مستند وتوقيع.');
+    let ok = false;
+    try { ok = await crypto.subtle.verify(SIGN, school.publicKey, unb64(sigTxt), enc.encode(doc)); } catch { ok = false; }
+    if (ok) {
+      showResult('#vRes', 'ok', '✅ التوقيع سليم: المستند من المدرسة ولم يتم تعديله.');
+      showResult(document.querySelector('[data-task=sign] .result'), 'ok', '✓ التحقق نجح بالمفتاح العام — من غير ما الشركة تعرف المفتاح الخاص للمدرسة.');
+      markDone('sign');
+    } else {
+      showResult('#vRes', 'bad', '❌ التوقيع غير صالح! إما المستند اتعدّل أو التوقيع مش من المدرسة.');
+      if (signed && sigTxt === signed.sig && doc !== signed.doc) {
+        showResult(document.querySelector('[data-task=tamper] .result'), 'ok', '✓ التزوير اتكشف! أي تعديل ولو حرف واحد بيغيّر الهاش، فالتوقيع مابقاش مطابق.');
+        markDone('tamper');
+      }
+    }
+  };
+</script>
+</body>
+</html>

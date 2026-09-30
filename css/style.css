@@ -766,3 +766,6 @@ td.att-total{white-space:nowrap; min-width:96px;}
 }
 .def .enp{ margin-bottom:0; border-color:var(--teal); }
 td .enp, li .enp{ font-size:12.2px; margin:4px 0 0; }
+
+/* رابط المعمل في الشريط الجانبي — نفس شكل الأزرار */
+a.link-btn.lab-link{text-decoration:none; font-weight:600; color:var(--tealink);}

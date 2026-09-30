@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>التشفير بالمفتاح العام</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="publickey" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="كل شخص عنده <b>زوج مفاتيح</b>: مفتاح <b>عام</b> بيوزعه على الكل (زي قفل مفتوح)، ومفتاح <b>خاص</b> محدش يعرفه غيره (المفتاح الوحيد اللي يفتح القفل). اللي يتشفّر بالعام، مايتفكش غير بالخاص."></div>
+
+  <div class="card tool">
+    <h2>👥 الشخصيات</h2>
+    <div class="grid-3">
+      <div class="card persona" style="margin:0">
+        <div class="face">🧑‍🎓</div><h3>أحمد (المرسل)</h3>
+        <p class="hint">عايز يبعت رسالة سرية لمنى</p>
+      </div>
+      <div class="card persona" style="margin:0">
+        <div class="face">👩‍💻</div><h3>منى (المستلمة)</h3>
+        <button class="btn small" id="genMona" type="button">ولّد مفاتيح منى</button>
+        <p class="hint" style="margin-top:8px">المفتاح العام (متاح للكل):</p>
+        <div class="box ltr" id="monaPub" style="font-size:.75rem">—</div>
+        <p class="hint" style="margin-top:6px">المفتاح الخاص: <span id="monaPriv">—</span></p>
+      </div>
+      <div class="card persona" style="margin:0">
+        <div class="face">🦹</div><h3>المتطفل</h3>
+        <p class="hint">بيتصنّت على الشبكة وعنده مفاتيحه الخاصة بيه</p>
+        <div class="box ltr" id="spyPub" style="font-size:.75rem">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card tool">
+    <h2>✉️ إرسال رسالة</h2>
+    <div class="grid-2">
+      <div>
+        <label for="pkMsg">رسالة أحمد</label>
+        <textarea id="pkMsg">كلمة سر الواي فاي الجديدة: Lab@2026</textarea>
+        <label for="pkWith">أحمد هيشفّر باستخدام:</label>
+        <select id="pkWith">
+          <option value="mona">🔓 المفتاح العام لمنى</option>
+          <option value="spy">🔓 المفتاح العام للمتطفل (لو المتطفل خدع أحمد!)</option>
+        </select>
+        <div class="row"><button class="btn" id="pkEnc" type="button">🔒 شفّر وابعت</button></div>
+      </div>
+      <div>
+        <label>اللي ماشي على الشبكة (الكل يقدر يشوفه):</label>
+        <div class="box ltr" id="pkCt" style="font-size:.78rem;max-height:140px;overflow:auto">—</div>
+        <div class="row">
+          <button class="btn" id="decMona" type="button">👩‍💻 منى تفك بمفتاحها الخاص</button>
+          <button class="btn danger" id="decSpy" type="button">🦹 المتطفل يحاول يفك</button>
+        </div>
+        <div class="result" id="pkRes"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="keys">
+    <div class="task-head"><h3>ولّد زوج المفاتيح لمنى</h3><span class="task-badge"></span></div>
+    <p>اضغط <b>ولّد مفاتيح منى</b>. لاحظ إن المفتاح العام بيظهر للكل، أما الخاص فبيفضل عندها بس.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="send">
+    <div class="task-head"><h3>وصّل الرسالة لمنى بأمان</h3><span class="task-badge"></span></div>
+    <p>خلّي أحمد يشفّر بـ<b>المفتاح العام لمنى</b>، وبعدين خلّي منى تفك بمفتاحها الخاص.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="spy">
+    <div class="task-head"><h3>المتطفل يحاول يقرأ الرسالة</h3><span class="task-badge"></span></div>
+    <p>بعد ما أحمد يشفّر بالمفتاح العام لمنى، خلّي المتطفل يحاول يفك. هل هيعرف؟<br>
+      وبعدين جرب: لو المتطفل <b>خدع أحمد</b> وأدّاله مفتاحه العام على إنه مفتاح منى... إيه اللي هيحصل؟ (ده السبب إن محتاجين <b>شهادة رقمية</b>)</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="tls">
+    <div class="task-head"><h3>رتّب خطوات اتصال HTTPS (مصافحة TLS)</h3><span class="task-badge"></span></div>
+    <p class="hint">استخدم الأسهم ▲▼ لترتيب الخطوات من الأول للآخر.</p>
+    <ol class="order-list" data-order="a,b,c,d,e">
+      <li data-id="a">المتصفح يطلب من الخادم بدء اتصال آمن</li>
+      <li data-id="b">الخادم يرسل <b>شهادته الرقمية</b> (وفيها مفتاحه العام)</li>
+      <li data-id="c">المتصفح يتحقق من الشهادة: صلاحيتها وسلسلة الثقة ومطابقتها لاسم الموقع</li>
+      <li data-id="d">الطرفان يتفقان على أسرار مشتركة ويشتقان منها <b>مفاتيح الجلسة</b> (بالتشفير بالمفتاح العام)</li>
+      <li data-id="e">تبادل البيانات مشفّرة بـ<b>التشفير المتماثل</b> باستخدام مفتاح الجلسة</li>
+    </ol>
+    <div class="row"><button class="btn" data-check-order type="button">تحقق من الترتيب</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q1">
+    <div class="task-head"><h3>أسئلة سريعة</h3><span class="task-badge"></span></div>
+    <p><b>1)</b> أحمد عايز يبعت رسالة سرية لمنى. يشفّرها بـ:</p>
+    <div class="mcq choices" data-answer="c">
+      <label class="choice"><input type="radio" name="pq1" value="a"> المفتاح الخاص لأحمد</label>
+      <label class="choice"><input type="radio" name="pq1" value="b"> المفتاح الخاص لمنى</label>
+      <label class="choice"><input type="radio" name="pq1" value="c"> المفتاح العام لمنى</label>
+      <label class="choice"><input type="radio" name="pq1" value="d"> المفتاح العام لأحمد</label>
+    </div>
+    <p style="margin-top:14px"><b>2)</b> ليه HTTPS بيبدّل للتشفير المتماثل بعد المصافحة؟</p>
+    <div class="mcq choices" data-answer="a" data-explain="الطريقة دي اسمها طريقة المفتاح المؤقت (Session key): العام للاتفاق على المفتاح، والمتماثل للسرعة.">
+      <label class="choice"><input type="radio" name="pq2" value="a"> لأن التشفير المتماثل أسرع بكتير في تشفير البيانات الكتير</label>
+      <label class="choice"><input type="radio" name="pq2" value="b"> لأن التشفير المتماثل مبيحتاجش مفتاح</label>
+      <label class="choice"><input type="radio" name="pq2" value="c"> لأن التشفير بالمفتاح العام مينفعش يتفك</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const ALG = { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' };
+  let mona = null, spy = null, packet = null;  // packet = { ct, keyOwner }
+
+  async function shortPub(key) {
+    const spki = await crypto.subtle.exportKey('spki', key);
+    const s = b64(spki);
+    return s.slice(0, 40) + '…' + s.slice(-24);
+  }
+
+  // مفاتيح المتطفل بتتولد تلقائيًا
+  crypto.subtle.generateKey(ALG, true, ['encrypt', 'decrypt']).then(async k => {
+    spy = k;
+    document.getElementById('spyPub').textContent = await shortPub(k.publicKey);
+  });
+
+  document.getElementById('genMona').onclick = async (e) => {
+    e.target.disabled = true; e.target.textContent = '⏳ جاري التوليد...';
+    mona = await crypto.subtle.generateKey(ALG, true, ['encrypt', 'decrypt']);
+    document.getElementById('monaPub').textContent = await shortPub(mona.publicKey);
+    document.getElementById('monaPriv').innerHTML = '<span class="pill ok">🔒 محفوظ عند منى بس</span>';
+    e.target.disabled = false; e.target.textContent = 'ولّد مفاتيح جديدة';
+    packet = null;
+    document.getElementById('pkCt').textContent = '—';
+    showResult(document.querySelector('[data-task=keys] .result'), 'ok', '✓ اتولّد زوج مفاتيح RSA طوله 2048 بت. المفتاح العام بيتنشر، والخاص ميتبعتش لحد أبدًا.');
+    markDone('keys');
+  };
+
+  document.getElementById('pkEnc').onclick = async () => {
+    if (!mona) return showResult('#pkRes', 'info', 'ولّد مفاتيح منى الأول.');
+    if (!spy) return showResult('#pkRes', 'info', 'استنى ثانية...');
+    const owner = document.getElementById('pkWith').value;
+    const key = owner === 'mona' ? mona.publicKey : spy.publicKey;
+    const msg = document.getElementById('pkMsg').value;
+    if (enc.encode(msg).length > 190) return showResult('#pkRes', 'info', 'الرسالة طويلة شوية على RSA — اختصرها. (عشان كده في الواقع RSA بيشفّر مفتاح الجلسة بس، مش الرسالة كلها)');
+    const ct = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, enc.encode(msg));
+    packet = { ct, owner };
+    document.getElementById('pkCt').textContent = b64(ct);
+    showResult('#pkRes', 'info', 'الرسالة المشفّرة اتبعتت على الشبكة. مين هيقدر يفكها؟');
+  };
+
+  async function tryDecrypt(who) {
+    if (!packet) return showResult('#pkRes', 'info', 'شفّر رسالة الأول.');
+    const priv = who === 'mona' ? mona.privateKey : spy.privateKey;
+    const name = who === 'mona' ? 'منى' : 'المتطفل';
+    try {
+      const pt = dec.decode(await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, priv, packet.ct));
+      if (who === 'spy') {
+        showResult('#pkRes', 'bad', `😱 المتطفل قرأ الرسالة: <b>${escapeHtml(pt)}</b><br>لأن أحمد شفّر بمفتاح المتطفل وهو فاكره مفتاح منى! الحل: <b>الشهادة الرقمية</b> اللي بتثبت إن المفتاح العام فعلاً بتاع صاحبه.`);
+        if (isDone('publickey', 'spy') === false && packet.owner === 'spy') {
+          showResult(document.querySelector('[data-task=spy] .result'), 'info', 'شفت الخطر؟ دلوقتي جرّب الحالة الطبيعية: شفّر بمفتاح منى وخلّي المتطفل يحاول.');
+        }
+      } else {
+        showResult('#pkRes', 'ok', `✓ ${name} فكت الرسالة: <b>${escapeHtml(pt)}</b>`);
+        if (packet.owner === 'mona') {
+          showResult(document.querySelector('[data-task=send] .result'), 'ok', '✓ الرسالة وصلت لمنى وهي بس اللي قدرت تفكها.');
+          markDone('send');
+        }
+      }
+    } catch {
+      showResult('#pkRes', 'bad', `⛔ ${name} فشل يفك الرسالة — المفتاح الخاص ده مش شريك المفتاح العام اللي اتشفّرت بيه.`);
+      if (who === 'spy' && packet.owner === 'mona') {
+        showResult(document.querySelector('[data-task=spy] .result'), 'ok', '✓ المتطفل شاف النص المشفّر بس معرفش يقرأه، لأن المفتاح الخاص لمنى معاها هي بس.');
+        markDone('spy');
+      }
+    }
+  }
+  document.getElementById('decMona').onclick = () => tryDecrypt('mona');
+  document.getElementById('decSpy').onclick = () => tryDecrypt('spy');
+</script>
+</body>
+</html>

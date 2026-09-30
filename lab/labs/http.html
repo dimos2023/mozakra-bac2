@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>HTTP و API</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="http" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="تطبيق الويب = <b>عميل</b> (المتصفح) بيبعت <b>طلب</b> HTTP ← و<b>خادم</b> بيرد بـ<b>استجابة</b> فيها رمز حالة وبيانات (غالبًا JSON). هنا فيه خادم تجريبي لنظام درجات المدرسة — كلّمه بنفسك."></div>
+
+  <div class="card tool">
+    <h2>📤 الطلب (Request)</h2>
+    <div class="row" style="margin-top:0">
+      <select id="method" style="max-width:130px" aria-label="الطريقة">
+        <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+      </select>
+      <input type="text" id="url" class="ltr" value="https://api.school.edu/api/students" style="flex:1;min-width:220px" aria-label="الرابط">
+      <button class="btn" id="send" type="button">إرسال ▶</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label for="headers">الترويسات (Headers) — سطر لكل ترويسة</label>
+        <textarea id="headers" class="code" style="min-height:90px" spellcheck="false">Content-Type: application/json</textarea>
+      </div>
+      <div>
+        <label for="body">جسم الطلب (Body) — JSON لطلبات POST</label>
+        <textarea id="body" class="code" style="min-height:90px" spellcheck="false">{ "name": "خالد", "grade": 17 }</textarea>
+      </div>
+    </div>
+    <details class="help"><summary>📖 الـ Endpoints المتاحة</summary>
+      <div class="table-wrap ltr"><table>
+        <tr><th>GET</th><td>/api/students</td><td>كل الطلاب</td></tr>
+        <tr><th>GET</th><td>/api/students/{id}</td><td>طالب واحد</td></tr>
+        <tr><th>POST</th><td>/api/students</td><td>إضافة طالب (JSON: name, grade)</td></tr>
+        <tr><th>DELETE</th><td>/api/students/{id}</td><td>حذف طالب — محتاج Authorization</td></tr>
+      </table></div>
+    </details>
+  </div>
+
+  <div class="card tool">
+    <h2>📥 الاستجابة (Response)</h2>
+    <div id="status" style="font-weight:800;font-size:1.1rem" class="ltr">—</div>
+    <pre class="output" id="resp" style="margin-top:8px">اضغط إرسال...</pre>
+    <details class="help"><summary>📖 رموز الحالة المشهورة</summary>
+      <div class="table-wrap"><table>
+        <tr><td><span class="pill ok">200</span> OK</td><td>تمام، وده اللي طلبته</td></tr>
+        <tr><td><span class="pill ok">201</span> Created</td><td>اتعمل حاجة جديدة</td></tr>
+        <tr><td><span class="pill bad">400</span> Bad Request</td><td>الطلب نفسه غلط (مثلاً JSON بايظ)</td></tr>
+        <tr><td><span class="pill bad">401</span> Unauthorized</td><td>لازم تثبت هويتك الأول</td></tr>
+        <tr><td><span class="pill bad">404</span> Not Found</td><td>الحاجة دي مش موجودة</td></tr>
+        <tr><td><span class="pill bad">405</span> Method Not Allowed</td><td>الطريقة دي مش مسموحة هنا</td></tr>
+      </table></div>
+    </details>
+  </div>
+
+  <div class="card task" data-task="get">
+    <div class="task-head"><h3>مين الطالب رقم 3؟</h3><span class="task-badge"></span></div>
+    <p>ابعت طلب <b>GET</b> للطالب اللي الـ id بتاعه 3، واكتب اسمه ودرجته.</p>
+    <div class="row">
+      <input type="text" id="gName" placeholder="الاسم" style="max-width:200px">
+      <input type="number" id="gGrade" placeholder="الدرجة" style="max-width:120px">
+      <button class="btn" id="gCheck" type="button">تحقق</button>
+    </div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="notfound">
+    <div class="task-head"><h3>اعمل خطأ 404 بإيدك</h3><span class="task-badge"></span></div>
+    <p>اطلب طالب مش موجود. الخادم هيرد بإيه؟</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="post">
+    <div class="task-head"><h3>ضيف طالب جديد</h3><span class="task-badge"></span></div>
+    <p>ابعت <b>POST</b> على <span class="kbd ltr">/api/students</span> ومعاه JSON فيه <span class="kbd ltr">name</span> و<span class="kbd ltr">grade</span>. المطلوب رد <b>201 Created</b>.
+      <br><span class="hint">جرّب كمان تبوّظ الـ JSON (امسح قوس) وشوف الرد.</span></p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="auth">
+    <div class="task-head"><h3>الحذف محتاج صلاحية 🔑</h3><span class="task-badge"></span></div>
+    <p>1) حاول تحذف طالب بـ <b>DELETE</b> من غير صلاحية ← هتاخد 401.<br>
+       2) المدرس إداك التوكن ده — ضيفه في الترويسات وجرب تاني:</p>
+    <div class="box ltr">Authorization: Bearer teacher-token-123</div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const STATUS = { 200: 'OK', 201: 'Created', 400: 'Bad Request', 401: 'Unauthorized', 404: 'Not Found', 405: 'Method Not Allowed' };
+  let db = [
+    { id: 1, name: 'يوسف', grade: 18 }, { id: 2, name: 'مريم', grade: 20 },
+    { id: 3, name: 'عمر', grade: 15 }, { id: 4, name: 'سلمى', grade: 19 },
+  ];
+  let nextId = 5, got401 = false;
+
+  // الخادم التجريبي
+  function server(method, url, headers, body) {
+    let path;
+    try { path = new URL(url).pathname.replace(/\/+$/, ''); } catch { return [400, { error: 'رابط غير صالح' }]; }
+    const m = path.match(/^\/api\/students(?:\/([^/]+))?$/);
+    if (!m) return [404, { error: 'المسار ده مش موجود على الخادم', path }];
+    const id = m[1];
+    if (!id) {
+      if (method === 'GET') return [200, db];
+      if (method === 'POST') {
+        let data;
+        try { data = JSON.parse(body); } catch { return [400, { error: 'JSON غير صالح — راجع الأقواس وعلامات التنصيص' }]; }
+        if (!data || typeof data.name !== 'string' || !data.name.trim() || typeof data.grade !== 'number')
+          return [400, { error: 'لازم يبقى فيه name (نص) و grade (رقم)' }];
+        const s = { id: nextId++, name: data.name.trim(), grade: data.grade };
+        db.push(s);
+        return [201, { message: 'تمت إضافة الطالب', student: s }];
+      }
+      return [405, { error: `الطريقة ${method} مش مسموحة على القائمة كلها` }];
+    }
+    const s = db.find(x => String(x.id) === id);
+    if (method === 'GET') return s ? [200, s] : [404, { error: `مفيش طالب رقمه ${id}` }];
+    if (method === 'DELETE') {
+      const auth = headers['authorization'] || '';
+      if (auth !== 'Bearer teacher-token-123') return [401, { error: 'غير مصرّح — ابعت Authorization صحيح' }];
+      if (!s) return [404, { error: `مفيش طالب رقمه ${id}` }];
+      db = db.filter(x => x !== s);
+      return [200, { message: `تم حذف ${s.name}` }];
+    }
+    return [405, { error: `الطريقة ${method} مش مدعومة هنا` }];
+  }
+
+  document.getElementById('send').onclick = () => {
+    const method = document.getElementById('method').value;
+    const url = document.getElementById('url').value.trim();
+    const headers = {};
+    document.getElementById('headers').value.split('\n').forEach(line => {
+      const i = line.indexOf(':');
+      if (i > 0) headers[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
+    });
+    const [code, data] = server(method, url, headers, document.getElementById('body').value);
+    const st = document.getElementById('status');
+    st.innerHTML = `HTTP/1.1 <span class="pill ${code < 300 ? 'ok' : 'bad'}">${code} ${STATUS[code]}</span>`;
+    document.getElementById('resp').textContent = 'Content-Type: application/json\n\n' + JSON.stringify(data, null, 2);
+
+    if (code === 404 && method === 'GET') {
+      showResult(document.querySelector('[data-task=notfound] .result'), 'ok', '✓ 404 = الطلب وصل للخادم تمام، بس الحاجة اللي طلبتها مش موجودة.');
+      markDone('notfound');
+    }
+    if (code === 201) {
+      showResult(document.querySelector('[data-task=post] .result'), 'ok', `✓ اتضاف برقم ${data.student.id}. جرّب GET على القائمة وهتلاقيه.`);
+      markDone('post');
+    }
+    if (method === 'DELETE') {
+      const r = document.querySelector('[data-task=auth] .result');
+      if (code === 401) { got401 = true; showResult(r, 'info', 'اتمنعت بـ 401 ✓ — دلوقتي ضيف التوكن في الترويسات وجرب تاني.'); }
+      if (code === 200 && got401) { showResult(r, 'ok', '✓ من غير توكن: 401، ومع التوكن: 200. الخادم بيتحقق من الصلاحية قبل أي عملية خطيرة.'); markDone('auth'); }
+      else if (code === 200) showResult(r, 'info', 'اتحذف ✓ — بس جرب الأول من غير التوكن عشان تشوف الـ 401.');
+    }
+  };
+
+  document.getElementById('gCheck').onclick = () => {
+    const r = document.querySelector('[data-task=get] .result');
+    const n = document.getElementById('gName').value.trim(), g = +document.getElementById('gGrade').value;
+    if (n === 'عمر' && g === 15) { showResult(r, 'ok', '✓ صح! GET /api/students/3 رجّع 200 ومعاه البيانات بصيغة JSON.'); markDone('get'); }
+    else showResult(r, 'bad', '✗ لأ — ابعت GET على /api/students/3 واقرا الـ JSON.');
+  };
+</script>
+</body>
+</html>

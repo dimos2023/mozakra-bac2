@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>دوال التجزئة</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="hash" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="دالة التجزئة (Hash) بتحوّل أي بيانات — مهما كان حجمها — لـ<b>بصمة</b> ثابتة الطول. نفس المدخل = نفس البصمة دايمًا، وأي تغيير صغير = بصمة مختلفة تمامًا، ومستحيل ترجع من البصمة للبيانات."></div>
+
+  <div class="card tool">
+    <h2>🧪 آلة SHA-256</h2>
+    <div class="grid-2">
+      <div>
+        <label for="hA">النص (أ)</label>
+        <textarea id="hA">Ahmed got 95 in the exam</textarea>
+      </div>
+      <div>
+        <label for="hB">النص (ب)</label>
+        <textarea id="hB">Ahmed got 95 in the exam</textarea>
+      </div>
+    </div>
+    <label>بصمة (أ)</label>
+    <div class="box diff-hex" id="hOutA"></div>
+    <label>بصمة (ب) — الحروف المختلفة متلوّنة</label>
+    <div class="box diff-hex" id="hOutB"></div>
+    <p style="margin-top:10px">عدد البتات المختلفة: <b id="hBits">0</b> من 256 (<b id="hPct">0%</b>)</p>
+  </div>
+
+  <div class="card task" data-task="avalanche">
+    <div class="task-head"><h3>تأثير الانهيار (Avalanche)</h3><span class="task-badge"></span></div>
+    <p>خلّي النصين (أ) و(ب) <b>متطابقين تمامًا ما عدا حرف واحد</b> (نفس الطول). لاحظ إن نص البتات تقريبًا بيتغير!</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="password">
+    <div class="task-head"><h3>المواقع مابتخزنش الباسورد نفسه 🔎</h3><span class="task-badge"></span></div>
+    <p>المواقع المحترمة بتخزن <b>بصمة</b> الباسورد مش الباسورد. اتسرّبت البصمة دي من قاعدة بيانات موقع:</p>
+    <div class="box diff-hex" id="leaked">...</div>
+    <p>المستخدم ده بيستخدم واحد من الباسوردات الشائعة دي: <span class="ltr kbd">qwerty</span> <span class="ltr kbd">123456</span> <span class="ltr kbd">sunshine</span> <span class="ltr kbd">letmein</span> <span class="ltr kbd">dragon</span></p>
+    <p class="hint">احسب بصمة كل واحد في الآلة فوق وقارن. (ده بالظبط اللي بيعمله الهاكر — عشان كده الباسوردات الشائعة خطر!)</p>
+    <label for="pwAns">الباسورد هو:</label>
+    <input type="text" id="pwAns" class="ltr">
+    <div class="row"><button class="btn" id="pwCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="integrity">
+    <div class="task-head"><h3>مين النسخة السليمة؟ 📄</h3><span class="task-badge"></span></div>
+    <p>المدرس نشر ملف النتيجة ومعاه بصمته الرسمية:</p>
+    <div class="box diff-hex" id="official">...</div>
+    <p>لقيت 3 نسخ من الملف على جروبات مختلفة. احسب بصمة كل نسخة واعرف أنهي واحدة ماحدش لعب فيها:</p>
+    <div class="grid-3" id="versions"></div>
+    <div class="mcq choices" data-answer="" id="intMcq">
+      <label class="choice"><input type="radio" name="iv" value="1"> النسخة 1</label>
+      <label class="choice"><input type="radio" name="iv" value="2"> النسخة 2</label>
+      <label class="choice"><input type="radio" name="iv" value="3"> النسخة 3</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q1">
+    <div class="task-head"><h3>صح ولا غلط؟</h3><span class="task-badge"></span></div>
+    <p><b>1)</b> لو حرف واحد اتغير في البيانات الأصلية، هيتغير حرف واحد بس في قيمة الهاش.</p>
+    <div class="mcq choices" data-answer="f">
+      <label class="choice"><input type="radio" name="hq1" value="t"> صح</label>
+      <label class="choice"><input type="radio" name="hq1" value="f"> غلط</label>
+    </div>
+    <p style="margin-top:12px"><b>2)</b> من الصعب جدًا نرجع الرسالة الأصلية من قيمة الهاش بتاعتها.</p>
+    <div class="mcq choices" data-answer="t">
+      <label class="choice"><input type="radio" name="hq2" value="t"> صح</label>
+      <label class="choice"><input type="radio" name="hq2" value="f"> غلط</label>
+    </div>
+    <p style="margin-top:12px"><b>3)</b> نفس النص لو دخل دالة الهاش مرتين هيدي بصمتين مختلفتين.</p>
+    <div class="mcq choices" data-answer="f">
+      <label class="choice"><input type="radio" name="hq3" value="t"> صح</label>
+      <label class="choice"><input type="radio" name="hq3" value="f"> غلط</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const hA = document.getElementById('hA'), hB = document.getElementById('hB');
+
+  function bitDiff(h1, h2) {
+    let n = 0;
+    for (let i = 0; i < h1.length; i++) {
+      let x = parseInt(h1[i], 16) ^ parseInt(h2[i], 16);
+      while (x) { n += x & 1; x >>= 1; }
+    }
+    return n;
+  }
+  function oneCharDiff(a, b) {
+    const A = [...a], B = [...b];
+    if (A.length !== B.length) return false;
+    return A.filter((c, i) => c !== B[i]).length === 1;
+  }
+
+  async function updHash() {
+    const [a, b] = await Promise.all([sha256Hex(hA.value), sha256Hex(hB.value)]);
+    document.getElementById('hOutA').textContent = a;
+    document.getElementById('hOutB').innerHTML = [...b].map((c, i) => c === a[i] ? c : `<span class="d">${c}</span>`).join('');
+    const bits = bitDiff(a, b);
+    document.getElementById('hBits').textContent = bits;
+    document.getElementById('hPct').textContent = Math.round(bits / 2.56) + '%';
+    if (oneCharDiff(hA.value, hB.value)) {
+      showResult(document.querySelector('[data-task=avalanche] .result'), 'ok',
+        `✓ حرف واحد بس اتغير في النص، لكن ${bits} بت من 256 اتغيروا في البصمة (${Math.round(bits / 2.56)}%)!`);
+      markDone('avalanche');
+    }
+  }
+  hA.oninput = hB.oninput = updHash;
+  updHash();
+
+  /* ---- الباسورد المسرّب ---- */
+  sha256Hex('sunshine').then(h => document.getElementById('leaked').textContent = h);
+  document.getElementById('pwCheck').onclick = () => {
+    const r = document.querySelector('[data-task=password] .result');
+    if (document.getElementById('pwAns').value.trim() === 'sunshine') {
+      showResult(r, 'ok', '✓ مظبوط! البصمة ماتترجعش، بس الهاكر يقدر يجرب ملايين الباسوردات الشائعة ويقارن. الباسورد الطويل والغريب هو الحماية.');
+      markDone('password');
+    } else {
+      showResult(r, 'bad', '✗ لأ. اكتب كل باسورد في خانة (أ) وقارن البصمة بالمسرّبة حرف بحرف.');
+    }
+  };
+
+  /* ---- سلامة الملف ---- */
+  const ORIGINAL = 'نتيجة امتحان الشهر\nيوسف: 18\nمريم: 20\nعمر: 15';
+  const VERSIONS = [
+    'نتيجة امتحان الشهر\nيوسف: 18\nمريم: 20\nعمر: 19',
+    'نتيجة امتحان الشهر\nيوسف: 18\nمريم: 20\nعمر: 15',
+    'نتيجة امتحان الشهر\nيوسف: 18\nمريم: 20 \nعمر: 15',
+  ];
+  const holder = document.getElementById('versions');
+  VERSIONS.forEach((v, i) => {
+    const d = document.createElement('div');
+    d.innerHTML = `<label>النسخة ${i + 1}</label><textarea readonly style="min-height:110px">${escapeHtml(v)}</textarea>
+      <button class="btn ghost small" type="button">احسب البصمة</button><div class="box diff-hex" style="margin-top:6px;font-size:.75rem">—</div>`;
+    d.querySelector('button').onclick = async () => {
+      d.querySelector('.box').textContent = await sha256Hex(v);
+    };
+    holder.appendChild(d);
+  });
+  sha256Hex(ORIGINAL).then(h => document.getElementById('official').textContent = h);
+  const intMcq = document.getElementById('intMcq');
+  intMcq.dataset.answer = String(VERSIONS.indexOf(ORIGINAL) + 1);
+  intMcq.dataset.explain = 'النسخة 1 فيها درجة متغيرة، والنسخة 3 فيها مسافة زيادة بس — ومع ذلك البصمة اتغيرت! كده بنكتشف أي تلاعب.';
+</script>
+</body>
+</html>

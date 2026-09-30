@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>فاحص HTTPS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+  <style>
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chips button { font: inherit; font-size: .85rem; direction: ltr; cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 99px; padding: 3px 12px; }
+    .checks-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    .checks-list li { display: flex; gap: 10px; align-items: flex-start; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
+    .checks-list li .ic { font-size: 1.2rem; }
+    .verdict { font-size: 1.15rem; font-weight: 800; padding: 12px; border-radius: 12px; margin-bottom: 12px; }
+    .verdict.ok { background: var(--ok-soft); color: var(--ok); }
+    .verdict.bad { background: var(--bad-soft); color: var(--bad); }
+    #editor { min-height: 360px; }
+  </style>
+</head>
+<body data-lab="https" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="وجود <b>https://</b> والقفل 🔒 معناه إن الموقع بعت <b>شهادة رقمية</b>. بس هل الشهادة دي سليمة؟ المتصفح بيتأكد من 3 حاجات: إنها <b>لسه سارية</b>، وإنها <b>لنفس اسم الموقع</b>، وإنها <b>صادرة من جهة موثوقة</b> (مش الموقع موقّعها لنفسه). افحص أي موقع بنفسك!"></div>
+
+  <!-- ===== الفاحص ===== -->
+  <div class="card tool">
+    <h2>🔍 افحص أي موقع</h2>
+    <div class="row" style="margin-top:0">
+      <input type="text" id="host" class="ltr" placeholder="google.com" style="flex:1;min-width:200px" aria-label="اسم الموقع">
+      <button class="btn" id="scan" type="button">افحص الشهادة</button>
+    </div>
+    <div class="chips" id="samples">
+      <span class="hint">جرّب:</span>
+      <button type="button">google.com</button>
+      <button type="button">moe.gov.eg</button>
+      <button type="button">github.com</button>
+      <button type="button">expired.badssl.com</button>
+      <button type="button">self-signed.badssl.com</button>
+      <button type="button">wrong.host.badssl.com</button>
+    </div>
+    <p class="hint" style="margin-top:8px">المواقع اللي آخرها <span class="ltr">badssl.com</span> مواقع تعليمية معمولة مخصوص بشهادات بايظة عشان نتعلم عليها.</p>
+    <div class="result" id="scanMsg"></div>
+    <div id="report"></div>
+  </div>
+
+  <div class="card task" data-task="valid">
+    <div class="task-head"><h3>افحص موقع شهادته سليمة 100%</h3><span class="task-badge"></span></div>
+    <p>افحص موقع بتستخدمه كل يوم (بنك، مدرسة، جيميل...) واتأكد إن الـ 4 فحوصات ✅.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="problems">
+    <div class="task-head"><h3>اكتشف 3 أنواع مشاكل مختلفة 🕵️</h3><span class="task-badge"></span></div>
+    <p>لقيت لحد دلوقتي: <span id="foundKinds">—</span></p>
+    <p class="hint">المطلوب: شهادة <b>منتهية</b>، وشهادة <b>اسمها مش مطابق</b>، وشهادة <b>موقّعة ذاتيًا</b>. (بص على المواقع اللي في "جرّب")</p>
+    <div class="result"></div>
+  </div>
+
+  <!-- ===== الكود ===== -->
+  <div class="card task" data-task="code" id="codeCard">
+    <div class="task-head"><h3>🐍 اكتب فاحص الشهادات بنفسك</h3><span class="task-badge"></span></div>
+    <p>كمّل الدالة <code>check_cert(cert, host, today)</code> بحيث ترجّع قائمة بالمشاكل اللي في الشهادة — أو قائمة فاضية <code>[]</code> لو سليمة. التفاصيل مكتوبة جوه الكود.</p>
+    <p id="pyStatus" class="pill info">⏳ جاري تحميل بايثون...</p>
+    <textarea id="editor" class="code" spellcheck="false" aria-label="محرر الكود"></textarea>
+    <div class="row">
+      <button class="btn" id="check" type="button" disabled>✅ صحّح على الحالات التجريبية</button>
+      <button class="btn ghost small" id="reset" type="button">↺ رجّع الكود الأصلي</button>
+    </div>
+    <details class="help"><summary>📦 الشهادات التجريبية اللي الاختبار بيستخدمها</summary><pre class="output" id="fixturesView"></pre></details>
+    <label>المخرجات</label>
+    <pre class="output" id="out"></pre>
+    <div class="table-wrap" id="testsWrap" style="margin-top:10px"></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="live">
+    <div class="task-head"><h3>🌍 شغّل الكود بتاعك على موقع حقيقي</h3><span class="task-badge"></span></div>
+    <p>دلوقتي الكود اللي إنت كتبته هيفحص شهادة حقيقية جاية من الإنترنت. لو نتيجته طابقت الفاحص الرسمي، يبقى إنت كتبت فاحص شغال فعلاً!</p>
+    <div class="row">
+      <input type="text" id="liveHost" class="ltr" placeholder="expired.badssl.com" style="flex:1;min-width:200px" aria-label="اسم الموقع">
+      <button class="btn" id="liveRun" type="button" disabled>▶ شغّل كودي</button>
+    </div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card tool">
+    <h2>🖥️ الاختبار الحقيقي من جهازك</h2>
+    <p>الفاحص اللي فوق بيستعين بخدمة خارجية. أما البرنامج ده فبيشتغل على اللاب توب بتاعك و<b>بيتصل بالموقع بنفسه</b>: بيعمل مصافحة TLS حقيقية ويتحقق من الشهادة زي المتصفح بالظبط (السلسلة كاملة + الاسم + التاريخ)، وكمان بيفحص:</p>
+    <ul style="margin-top:0">
+      <li>إصدار TLS ونوع التشفير المستخدم (مثلاً <span class="ltr">TLSv1.3 — AES-256</span>)</li>
+      <li>هل <span class="ltr">http://</span> بيتحوّل تلقائي لـ <span class="ltr">https://</span> ولا الموقع بيفضل مكشوف</li>
+      <li>هل <b>HSTS</b> مفعّل (الموقع بيجبر المتصفح مايكلموش غير مشفّر)</li>
+    </ul>
+    <div class="row">
+      <a class="btn" href="../tools/https_check.py" download>⬇️ نزّل https_check.py</a>
+    </div>
+    <p style="margin-top:12px"><b>التشغيل:</b> لازم يكون عندك <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Python</a> متسطّب. افتح الـ Terminal في نفس الفولدر واكتب:</p>
+    <pre class="output">python https_check.py google.com</pre>
+    <p class="hint">أو افتح الملف في IDLE واضغط F5 واكتب اسم الموقع لما يسألك.</p>
+    <details class="help"><summary>👀 شكل النتيجة</summary><pre class="output">🔍 بفحص: moe.gov.eg
+─────────────────────────────────────────────
+🌐 عنوان الـ IP: 20.50.42.6
+✅ الاتصال مشفّر والشهادة سليمة (السلسلة + الاسم + التاريخ)
+   🔐 البروتوكول: TLSv1.3   التشفير: TLS_AES_256_GCM_SHA384 (256 بت)
+   📄 صادرة لـ: *.moe.gov.eg
+   🏢 صادرة من: Go Daddy Secure Certificate Authority - G2
+   📅 سارية لحد: 2026-10-18 (باقي 18 يوم)
+✅ لو حد كتب http:// بيتحوّل تلقائي لـ https://
+✅ HSTS مفعّل — المتصفح هيرفض أي اتصال غير مشفّر بالموقع ده
+─────────────────────────────────────────────
+🟢 النتيجة: الموقع مشفّر فعلاً (4/4)</pre></details>
+  </div>
+
+  <div class="card">
+    <h3>💡 خلّي بالك</h3>
+    <ul style="margin:0;padding-inline-start:20px">
+      <li>الشهادة السليمة معناها إن الاتصال <b>مشفّر ومع الموقع الصح</b> — مش معناها إن الموقع نفسه أمين. مواقع النصب ممكن يبقى عندها قفل 🔒 عادي!</li>
+      <li>المتصفح بيعمل فحوصات أكتر، زي التحقق من <b>سلسلة الثقة</b> كاملة لحد جهة إصدار موثوقة ومتسجلة جوه المتصفح.</li>
+      <li>المتصفح مابيسمحش لصفحة إنها تقرا شهادة موقع تاني، فالفحص هنا بيتم عن طريق خدمة مجانية (<span class="ltr">networkcalc.com</span>) بتجيب الشهادة وتبعتها لنا. اللي بيتبعت ليها هو اسم الموقع بس.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="../assets/app.js"></script>
+<script src="../assets/py-runner.js"></script>
+<script>
+  const API = 'https://networkcalc.com/api/security/certificate/';
+
+  /* ---------- جلب الشهادة ---------- */
+  function cleanHost(v) {
+    return v.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '').replace(/\.$/, '');
+  }
+  async function fetchCert(host) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 30000);
+    try {
+      const r = await fetch(API + encodeURIComponent(host), { signal: ctl.signal });
+      const d = await r.json();
+      if (d.status === 'OK' && d.certificate) return { ok: true, cert: d.certificate };
+      if (d.status === 'HOST_NOT_RESOLVED') return { ok: false, msg: 'الموقع ده مش موجود (اسم النطاق مش متسجل). اتأكد من الاسم.' };
+      if (d.status === 'INVALID_HOST') return { ok: false, msg: 'اسم الموقع مش مكتوب صح. اكتبه كده: example.com' };
+      return { ok: false, noHttps: true, msg: 'الموقع مابيردش على HTTPS (منفذ 443) — يعني غالبًا <b>مش مشفّر خالص</b> ⚠️' };
+    } catch (e) {
+      return { ok: false, msg: e.name === 'AbortError' ? 'الفحص أخد وقت طويل — جرب تاني.' : 'مش قادر أوصل لخدمة الفحص — اتأكد من الإنترنت.' };
+    } finally { clearTimeout(t); }
+  }
+
+  // الشكل المبسط اللي بيدخل لكود بايثون
+  function simplify(cert) {
+    const names = (cert.alternate_names || []).filter(n => n.startsWith('DNS:')).map(n => n.slice(4));
+    return {
+      issued_to: cert.issued_to || '',
+      issued_by: cert.issued_by || '',
+      valid_from: (cert.valid_from || '').slice(0, 10),
+      valid_to: (cert.valid_to || '').slice(0, 10),
+      names: names.length ? names : [cert.issued_to || ''],
+    };
+  }
+
+  /* ---------- الفاحص الرسمي (نفس منطق التمرين) ---------- */
+  function nameMatches(pattern, host) {
+    pattern = pattern.toLowerCase(); host = host.toLowerCase();
+    if (pattern.startsWith('*.')) {
+      const base = pattern.slice(2);
+      const prefix = host.slice(0, host.length - base.length - 1);
+      return host.endsWith('.' + base) && prefix !== '' && !prefix.includes('.');
+    }
+    return pattern === host;
+  }
+  function officialCheck(c, host, today) {
+    const p = [];
+    if (today > c.valid_to) p.push('منتهية');
+    if (today < c.valid_from) p.push('لم تبدأ بعد');
+    if (!c.names.some(n => nameMatches(n, host))) p.push('اسم غير مطابق');
+    if (c.issued_by === c.issued_to) p.push('موقعة ذاتيا');
+    return p.sort();
+  }
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  /* ---------- الفحص من الواجهة ---------- */
+  const found = new Set();
+  const KIND_LABEL = { 'منتهية': '⏰ منتهية', 'اسم غير مطابق': '🏷️ اسم غير مطابق', 'موقعة ذاتيا': '✍️ موقّعة ذاتيًا' };
+
+  function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 864e5); }
+  const fmtDate = d => new Date(d).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  async function scan(raw) {
+    const host = cleanHost(raw);
+    const report = document.getElementById('report');
+    report.innerHTML = '';
+    if (!host) return showResult('#scanMsg', 'info', 'اكتب اسم موقع الأول.');
+    document.getElementById('host').value = host;
+    showResult('#scanMsg', 'info', `⏳ بنكلّم <span class="ltr">${escapeHtml(host)}</span> ونطلب شهادته...`);
+    const r = await fetchCert(host);
+    if (!r.ok) return showResult('#scanMsg', r.noHttps ? 'bad' : 'info', r.msg);
+    document.getElementById('scanMsg').className = 'result';
+
+    const raw_c = r.cert, c = simplify(raw_c), now = today();
+    const problems = officialCheck(c, host, now);
+    const left = daysBetween(now, c.valid_to);
+    const matched = c.names.find(n => nameMatches(n, host));
+    const items = [
+      [true, 'الموقع بيدعم HTTPS', 'الموقع رد على منفذ 443 وبعت شهادة رقمية.'],
+      [!problems.includes('منتهية') && !problems.includes('لم تبدأ بعد'), 'الشهادة سارية',
+        problems.includes('منتهية') ? `انتهت من ${-left} يوم! (${fmtDate(raw_c.valid_to)})`
+          : problems.includes('لم تبدأ بعد') ? `لسه ماتبدأش — بتبدأ ${fmtDate(raw_c.valid_from)}`
+          : `سارية لحد ${fmtDate(raw_c.valid_to)} — باقي ${left} يوم${left < 15 ? ' ⚠️ قربت تخلص' : ''}`],
+      [!!matched, 'الشهادة لنفس اسم الموقع',
+        matched ? `الاسم <span class="ltr kbd">${escapeHtml(host)}</span> متغطي بـ <span class="ltr kbd">${escapeHtml(matched)}</span>`
+          : `الشهادة بتغطي <span class="ltr">${c.names.slice(0, 4).map(escapeHtml).join('، ')}</span> — مش <span class="ltr kbd">${escapeHtml(host)}</span>. ممكن يكون حد بينتحل شخصية الموقع!`],
+      [!problems.includes('موقعة ذاتيا'), 'صادرة من جهة موثوقة',
+        problems.includes('موقعة ذاتيا') ? 'الموقع موقّع الشهادة لنفسه! أي حد يقدر يعمل كده — المتصفح مش هيثق فيها.'
+          : `جهة الإصدار: <span class="ltr kbd">${escapeHtml(c.issued_by)}</span>`],
+    ];
+    const ok = problems.length === 0;
+    report.innerHTML = `
+      <div class="verdict ${ok ? 'ok' : 'bad'}" style="margin-top:14px">${ok
+        ? '🔒 الاتصال بالموقع ده مشفّر وشهادته سليمة'
+        : '⚠️ الشهادة فيها مشكلة — المتصفح هيطلّع تحذير "الاتصال ليس خاصًا"'}</div>
+      <ul class="checks-list">${items.map(([g, t, d]) => `<li><span class="ic">${g ? '✅' : '❌'}</span><div><b>${t}</b><br><span class="hint">${d}</span></div></li>`).join('')}</ul>
+      <details class="help"><summary>📄 تفاصيل الشهادة</summary>
+        <div class="table-wrap"><table>
+          <tr><th>صادرة لـ</th><td class="ltr">${escapeHtml(c.issued_to)}</td></tr>
+          <tr><th>صادرة من</th><td class="ltr">${escapeHtml(c.issued_by)}</td></tr>
+          <tr><th>من</th><td>${fmtDate(raw_c.valid_from)}</td></tr>
+          <tr><th>إلى</th><td>${fmtDate(raw_c.valid_to)}</td></tr>
+          <tr><th>الأسماء المغطاة</th><td class="ltr" style="word-break:break-all">${c.names.slice(0, 12).map(escapeHtml).join(', ')}${c.names.length > 12 ? ` … (+${c.names.length - 12})` : ''}</td></tr>
+          <tr><th>البصمة (SHA-1)</th><td class="ltr" style="word-break:break-all">${escapeHtml(raw_c.fingerprint || '')}</td></tr>
+        </table></div></details>`;
+
+    if (ok) {
+      showResult(document.querySelector('[data-task=valid] .result'), 'ok', `✓ ${escapeHtml(host)}: الأربع فحوصات سليمة.`);
+      markDone('valid');
+    }
+    problems.forEach(p => { if (KIND_LABEL[p]) found.add(p); });
+    document.getElementById('foundKinds').textContent = found.size ? [...found].map(k => KIND_LABEL[k]).join(' · ') : '—';
+    if (found.size === 3) {
+      showResult(document.querySelector('[data-task=problems] .result'), 'ok', '✓ اكتشفت الـ 3 أنواع! دي بالظبط الحالات اللي بتخلّي المتصفح يحذّرك.');
+      markDone('problems');
+    }
+  }
+  document.getElementById('scan').onclick = () => scan(document.getElementById('host').value);
+  document.getElementById('host').addEventListener('keydown', e => { if (e.key === 'Enter') scan(e.target.value); });
+  document.querySelectorAll('#samples button').forEach(b => b.onclick = () => scan(b.textContent));
+
+  /* ---------- تمرين الكود ---------- */
+  const STARTER = `def name_matches(pattern, host):
+    """جاهزة: بتقارن اسم مكتوب في الشهادة (ممكن يبدأ بـ *.) باسم الموقع"""
+    pattern, host = pattern.lower(), host.lower()
+    if pattern.startswith("*."):
+        base = pattern[2:]
+        prefix = host[: len(host) - len(base) - 1]
+        return host.endswith("." + base) and prefix != "" and "." not in prefix
+    return pattern == host
+
+
+def check_cert(cert, host, today):
+    """
+    cert: قاموس (dict) فيه:
+        cert["issued_to"]    الشهادة صادرة لمين
+        cert["issued_by"]    مين أصدرها
+        cert["valid_from"]   بداية الصلاحية  "YYYY-MM-DD"
+        cert["valid_to"]     نهاية الصلاحية  "YYYY-MM-DD"
+        cert["names"]        قائمة الأسماء اللي الشهادة بتغطيها
+    host:  اسم الموقع اللي بنفحصه
+    today: تاريخ النهارده "YYYY-MM-DD"
+
+    ترجّع قائمة بالمشاكل، أو [] لو الشهادة سليمة:
+        "منتهية"          لو today بعد valid_to
+        "لم تبدأ بعد"     لو today قبل valid_from
+        "اسم غير مطابق"   لو مفيش ولا اسم في names بيطابق host
+        "موقعة ذاتيا"     لو issued_by هو نفسه issued_to
+    """
+    problems = []
+
+    # 1) الصلاحية — التواريخ بالشكل ده ينفع تتقارن بـ < و > عادي
+
+    # 2) الاسم — جرّب name_matches مع كل اسم في cert["names"]
+
+    # 3) موقّعة ذاتيًا؟
+
+    return problems
+
+
+# جرّب بنفسك:
+print(check_cert(CERT_EXPIRED, "expired.badssl.com", "2026-10-01"))
+`;
+  const FIXTURES = `CERT_GOOGLE = {"issued_to": "*.google.com", "issued_by": "WR2", "valid_from": "2026-09-10", "valid_to": "2026-12-03", "names": ["*.google.com", "google.com"]}
+CERT_EXPIRED = {"issued_to": "*.badssl.com", "issued_by": "COMODO RSA Domain Validation Secure Server CA", "valid_from": "2015-04-09", "valid_to": "2015-04-12", "names": ["*.badssl.com", "badssl.com"]}
+CERT_SELF = {"issued_to": "*.badssl.com", "issued_by": "*.badssl.com", "valid_from": "2026-09-29", "valid_to": "2028-09-28", "names": ["*.badssl.com", "badssl.com"]}
+CERT_WRONG = {"issued_to": "*.badssl.com", "issued_by": "YR1", "valid_from": "2026-09-29", "valid_to": "2026-12-28", "names": ["*.badssl.com", "badssl.com"]}
+CERT_FUTURE = {"issued_to": "school.edu.eg", "issued_by": "R11", "valid_from": "2027-01-01", "valid_to": "2027-04-01", "names": ["school.edu.eg"]}
+`;
+  const TESTS = [
+    ['sorted(check_cert(CERT_GOOGLE, "google.com", "2026-10-01"))', '[]'],
+    ['sorted(check_cert(CERT_GOOGLE, "mail.google.com", "2026-10-01"))', '[]'],
+    ['sorted(check_cert(CERT_GOOGLE, "google.com", "2026-12-03"))', '[]'],
+    ['sorted(check_cert(CERT_EXPIRED, "expired.badssl.com", "2026-10-01"))', "['منتهية']"],
+    ['sorted(check_cert(CERT_FUTURE, "school.edu.eg", "2026-10-01"))', "['لم تبدأ بعد']"],
+    ['sorted(check_cert(CERT_WRONG, "wrong.host.badssl.com", "2026-10-01"))', "['اسم غير مطابق']"],
+    ['sorted(check_cert(CERT_SELF, "self-signed.badssl.com", "2026-10-01"))', "['موقعة ذاتيا']"],
+    ['sorted(check_cert(CERT_EXPIRED, "evil.com", "2026-10-01"))', "sorted(['منتهية', 'اسم غير مطابق'])"],
+  ];
+  document.getElementById('fixturesView').textContent = FIXTURES;
+
+  const editor = document.getElementById('editor');
+  const DRAFT = 'cyberlab-py-https';
+  try { editor.value = localStorage.getItem(DRAFT) ?? STARTER; } catch { editor.value = STARTER; }
+  editor.addEventListener('input', () => { try { localStorage.setItem(DRAFT, editor.value); } catch { /* تجاهل */ } });
+  tabIndent(editor);
+  document.getElementById('reset').onclick = () => {
+    if (confirm('هترجع للكود الأصلي وتمسح اللي كتبته. متأكد؟')) { editor.value = STARTER; editor.dispatchEvent(new Event('input')); }
+  };
+
+  // الشهادات التجريبية بتتحط قبل كود الطالب عشان يقدر يستخدمها في print
+  const withFixtures = code => FIXTURES + '\n' + code;
+
+  document.getElementById('check').onclick = () => {
+    const res = PyRunner.run(withFixtures(editor.value), TESTS);
+    const out = document.getElementById('out');
+    // أرقام السطور: نطرح سطور الشهادات التجريبية
+    const shift = FIXTURES.split('\n').length;
+    const err = res.err ? res.err.replace(/السطر (\d+)/, (m, n) => 'السطر ' + Math.max(1, n - shift)) : '';
+    out.textContent = (res.out || '') + (err ? '\n' + err : '') || '(مفيش مخرجات)';
+    const card = document.getElementById('codeCard'), r = card.querySelector('.result');
+    const wrap = document.getElementById('testsWrap');
+    if (res.err) { wrap.innerHTML = ''; return showResult(r, 'bad', 'الكود فيه خطأ — بص على المخرجات وصلّحه.'); }
+    wrap.innerHTML = renderTestsTable(res.tests);
+    const passed = res.tests.filter(t => t.ok).length;
+    if (passed === res.tests.length) {
+      showResult(r, 'ok', `✓ عدّى كل الاختبارات (${passed}/${passed}) 🎉 — جرّبه دلوقتي على موقع حقيقي تحت.`);
+      markDone('code');
+    } else {
+      showResult(r, 'bad', `✗ عدّى ${passed} من ${res.tests.length}. بص على الجدول وشوف أنهي حالة لسه غلط.`);
+    }
+  };
+
+  document.getElementById('liveRun').onclick = async () => {
+    const card = document.querySelector('[data-task=live]'), r = card.querySelector('.result');
+    const host = cleanHost(document.getElementById('liveHost').value || 'expired.badssl.com');
+    document.getElementById('liveHost').value = host;
+    showResult(r, 'info', `⏳ بنجيب شهادة <span class="ltr">${escapeHtml(host)}</span> الحقيقية...`);
+    const f = await fetchCert(host);
+    if (!f.ok) return showResult(r, 'info', f.msg);
+    const cert = simplify(f.cert), now = today();
+    const res = PyRunner.evaluate(withFixtures(editor.value), 'check_cert(cert, host, today)', { cert, host, today: now });
+    if (res.err) return showResult(r, 'bad', 'الكود وقع وهو شغال: ' + escapeHtml(res.err));
+    const mine = Array.isArray(res.value) ? [...res.value].sort() : null;
+    const official = officialCheck(cert, host, now);
+    const show = v => v && v.length ? v.map(escapeHtml).join('، ') : 'سليمة ✅';
+    const certInfo = `<pre class="output" style="margin-top:8px">cert = ${escapeHtml(JSON.stringify(cert, null, 1).slice(0, 600))}</pre>`;
+    if (!mine) return showResult(r, 'bad', `الدالة لازم ترجّع list — رجّعت: ${escapeHtml(String(res.value))}` + certInfo);
+    if (JSON.stringify(mine) === JSON.stringify(official)) {
+      showResult(r, 'ok', `✓ كودك قال: <b>${show(mine)}</b> — والفاحص الرسمي قال نفس الكلام! إنت كتبت فاحص HTTPS حقيقي 🎉` + certInfo);
+      markDone('live');
+    } else {
+      showResult(r, 'bad', `✗ كودك قال: <b>${show(mine)}</b> — بس الفاحص الرسمي قال: <b>${show(official)}</b>. راجع الكود.` + certInfo);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    PyRunner.load().then(() => {
+      const st = document.getElementById('pyStatus');
+      st.className = 'pill ok'; st.textContent = '✓ بايثون جاهز';
+      document.getElementById('check').disabled = document.getElementById('liveRun').disabled = false;
+    }).catch(() => {
+      const st = document.getElementById('pyStatus');
+      st.className = 'pill bad'; st.textContent = '⛔ فشل تحميل بايثون — اتأكد من الإنترنت واعمل ريفرش';
+    });
+  });
+</script>
+</body>
+</html>

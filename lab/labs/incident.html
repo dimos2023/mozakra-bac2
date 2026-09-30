@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>الاستجابة للحوادث</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="incident" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="الحادث الأمني هو أي حدث بيأثر بجدية على <b>سرية</b> المعلومات أو <b>سلامتها</b> أو <b>توافرها</b>. التعامل معاه بيمشي بتسلسل: احتوِ ← أزل السبب ← استعد ← اتعلم. والمخاطر بنرتبها بـ: <b>الخطر = التأثير × الاحتمالية</b>."></div>
+
+  <div class="card tool">
+    <h2>🚨 السيناريو</h2>
+    <p>الساعة 9 الصبح، برنامج الحماية في معمل المدرسة طلّع تنبيه: جهاز في المعمل بيشفّر الملفات ويطلب فدية (Ransomware) 💀. إنت مسؤول الأمن — هتتعامل إزاي؟</p>
+  </div>
+
+  <div class="card task" data-task="order">
+    <div class="task-head"><h3>رتّب المراحل الست للاستجابة للحوادث</h3><span class="task-badge"></span></div>
+    <ol class="order-list" data-order="a,b,c,d,e,f">
+      <li data-id="a"><b>التحضير</b> — نجهّز إجراءات وفريق الاستجابة مسبقًا</li>
+      <li data-id="b"><b>الاكتشاف</b> — نكتشف الحادث ونتأكد إنه حصل فعلاً</li>
+      <li data-id="c"><b>الاحتواء</b> — نحدد نطاق التأثير ونمنع الضرر من الانتشار</li>
+      <li data-id="d"><b>إزالة التهديد (الاستئصال)</b> — نمسح البرمجية الخبيثة ونقفل الثغرة</li>
+      <li data-id="e"><b>الاستعادة</b> — نرجّع الأنظمة لحالة تشغيل آمنة (من نسخة احتياطية سليمة)</li>
+      <li data-id="f"><b>الدروس المستفادة والتحسين</b> — نحلل ونوثّق ونحسّن الضوابط</li>
+    </ol>
+    <div class="row"><button class="btn" data-check-order type="button">تحقق من الترتيب</button></div>
+    <details class="help"><summary>💡 فكّر: ليه الاحتواء قبل الاستئصال؟</summary>
+      <p>لأن لو بدأت تدوّر وتمسح والجهاز لسه متوصل بالشبكة، الفيروس ممكن يكون انتشر لأجهزة تانية في الوقت ده. الأول اعزل، وبعدين نضّف.</p></details>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="classify">
+    <div class="task-head"><h3>كل إجراء ده في أنهي مرحلة؟</h3><span class="task-badge"></span></div>
+    <div class="table-wrap">
+      <table id="actions"><thead><tr><th>الإجراء</th><th>المرحلة</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="row"><button class="btn" id="classCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card tool">
+    <h2>📊 مصفوفة تقييم المخاطر</h2>
+    <p class="hint">درجة الخطر = درجة التأثير × درجة الاحتمالية (كل واحدة من 1 لـ 3). الخانات الحمرا أولويتها الأعلى.</p>
+    <div class="risk-grid" id="matrix"></div>
+  </div>
+
+  <div class="card task" data-task="risk">
+    <div class="task-head"><h3>احسب المخاطر ورتّب الأولويات</h3><span class="task-badge"></span></div>
+    <div class="table-wrap">
+      <table id="risks">
+        <thead><tr><th>الخطر</th><th>التأثير</th><th>الاحتمالية</th><th>درجة الخطر</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <label for="topRisk">أنهي خطر لازم نتعامل معاه الأول؟</label>
+    <select id="topRisk"><option value="">— اختار —</option></select>
+    <div class="row"><button class="btn" id="riskCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const PHASES = { prep: 'التحضير', detect: 'الاكتشاف', contain: 'الاحتواء', erad: 'الاستئصال', recover: 'الاستعادة', lessons: 'الدروس المستفادة' };
+  const ACTIONS = [
+    ['فصل الجهاز المصاب عن الشبكة فورًا', 'contain'],
+    ['مسح البرمجية الخبيثة وتحديث النظام لقفل الثغرة', 'erad'],
+    ['كتابة خطة "نعمل إيه لو حصل هجوم" وتدريب المدرسين عليها قبل أي حادث', 'prep'],
+    ['استرجاع الملفات من النسخة الاحتياطية السليمة', 'recover'],
+    ['تنبيه برنامج الحماية بسلوك غريب والتأكد إنه هجوم حقيقي', 'detect'],
+    ['تحليل إزاي الفيروس دخل ووضع قاعدة تمنع فتح المرفقات المجهولة', 'lessons'],
+  ];
+  const tb = document.querySelector('#actions tbody');
+  ACTIONS.forEach(([t], i) => {
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${t}</td><td><select data-i="${i}" aria-label="المرحلة">
+      <option value="">— اختار —</option>${Object.entries(PHASES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></td></tr>`);
+  });
+  document.getElementById('classCheck').onclick = () => {
+    let right = 0;
+    tb.querySelectorAll('select').forEach(s => {
+      const ok = s.value === ACTIONS[s.dataset.i][1];
+      if (ok) right++;
+      s.style.borderColor = s.value ? (ok ? 'var(--ok)' : 'var(--bad)') : '';
+    });
+    const res = document.querySelector('[data-task=classify] .result');
+    if (right === ACTIONS.length) { showResult(res, 'ok', '✓ كله صح!'); markDone('classify'); }
+    else showResult(res, 'bad', `✗ ${right} من ${ACTIONS.length} صح (الأخضر صح، الأحمر غلط).`);
+  };
+
+  /* ---- المصفوفة ---- */
+  const lvl = s => s >= 6 ? 3 : s >= 3 ? 2 : 1;
+  const m = document.getElementById('matrix');
+  m.innerHTML = '<div></div><div><b>احتمالية 1</b></div><div><b>احتمالية 2</b></div><div><b>احتمالية 3</b></div>';
+  for (let imp = 3; imp >= 1; imp--) {
+    m.insertAdjacentHTML('beforeend', `<div><b>تأثير ${imp}</b></div>`);
+    for (let p = 1; p <= 3; p++) m.insertAdjacentHTML('beforeend', `<div class="lvl-${lvl(imp * p)}">${imp * p}</div>`);
+  }
+
+  /* ---- المخاطر ---- */
+  const RISKS = [
+    { t: 'تسريب بيانات الطلاب من قاعدة البيانات', i: 3, p: 2 },
+    { t: 'انقطاع الكهرباء عن السيرفر', i: 2, p: 1 },
+    { t: 'رسائل تصيّد (Phishing) بتسرق حسابات المدرسين', i: 3, p: 3 },
+    { t: 'سرقة لاب توب من المعمل', i: 2, p: 2 },
+  ];
+  const rb = document.querySelector('#risks tbody');
+  RISKS.forEach((r, k) => {
+    rb.insertAdjacentHTML('beforeend', `<tr><td>${r.t}</td><td>${r.i}</td><td>${r.p}</td>
+      <td><input type="number" min="1" max="9" data-k="${k}" style="max-width:90px" aria-label="درجة الخطر"></td></tr>`);
+    document.getElementById('topRisk').insertAdjacentHTML('beforeend', `<option value="${k}">${r.t}</option>`);
+  });
+  document.getElementById('riskCheck').onclick = () => {
+    let right = 0;
+    rb.querySelectorAll('input').forEach(inp => {
+      const r = RISKS[inp.dataset.k];
+      const ok = +inp.value === r.i * r.p;
+      if (ok) right++;
+      inp.style.borderColor = inp.value ? (ok ? 'var(--ok)' : 'var(--bad)') : '';
+    });
+    const scores = RISKS.map(r => r.i * r.p);
+    const best = scores.indexOf(Math.max(...scores));
+    const top = document.getElementById('topRisk').value;
+    const res = document.querySelector('[data-task=risk] .result');
+    if (right === RISKS.length && top === String(best)) {
+      showResult(res, 'ok', '✓ صح! التصيّد: تأثير عالي × احتمالية عالية = 9 — أعلى أولوية. الحل: توعية المدرسين + المصادقة الثنائية.');
+      markDone('risk');
+    } else {
+      showResult(res, 'bad', `✗ الدرجات: ${right} من ${RISKS.length} صح${top === '' ? '، واختار الخطر الأهم' : top === String(best) ? '، والأولوية صح' : '، والأولوية غلط'}.`);
+    }
+  };
+</script>
+</body>
+</html>

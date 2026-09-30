@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>جدار الحماية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+  <style>
+    .net { display: grid; grid-template-columns: 1fr auto 1fr 1fr; gap: 10px; align-items: stretch; text-align: center; }
+    .zone { border: 2px dashed var(--border); border-radius: 12px; padding: 10px; }
+    .zone b { display: block; margin-bottom: 6px; }
+    .zone .host { background: var(--surface-2); border-radius: 8px; padding: 6px; margin: 4px 0; font-size: .88rem; }
+    .fw { background: var(--bad-soft); color: var(--bad); border-radius: 12px; padding: 10px; font-weight: 800; display: grid; place-items: center; writing-mode: vertical-rl; }
+    .zone.dmz { border-color: var(--warn); }
+    .zone.lan { border-color: var(--ok); }
+    @media (max-width: 800px) { .net { grid-template-columns: 1fr; } .fw { writing-mode: horizontal-tb; } }
+    #rules select { min-width: 110px; padding: 6px 8px; }
+  </style>
+</head>
+<body data-lab="firewall" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="جدار الحماية بيقرا القواعد <b>من فوق لتحت</b>، وأول قاعدة تنطبق على الحزمة هي اللي بتتنفذ. ولو مفيش قاعدة انطبقت ← <b>تترفض</b> (الرفض الافتراضي)."></div>
+
+  <div class="card tool">
+    <h2>🏫 شبكة المدرسة</h2>
+    <div class="net">
+      <div class="zone"><b>🌍 الإنترنت</b><div class="host">زوار الموقع</div><div class="host">🦹 هاكرز</div></div>
+      <div class="fw">🧱 جدار الحماية</div>
+      <div class="zone dmz"><b>🟡 المنطقة المعزولة DMZ</b><div class="host">🖥️ خادم الويب (موقع المدرسة)<br><small>80 / 443 / 22</small></div></div>
+      <div class="zone lan"><b>🟢 الشبكة الداخلية LAN</b><div class="host">💻 أجهزة المدرسين والإدارة<br><small>3389</small></div><div class="host">🗄️ قاعدة بيانات الطلاب<br><small>5432</small></div></div>
+    </div>
+    <p class="hint" style="margin-top:10px">المنافذ: <b>80</b> HTTP · <b>443</b> HTTPS · <b>22</b> SSH (إدارة السيرفر) · <b>5432</b> قاعدة البيانات · <b>3389</b> سطح المكتب البعيد</p>
+  </div>
+
+  <div class="card tool">
+    <h2>📜 قواعد جدار الحماية</h2>
+    <p class="hint">القاعدة الموجودة دلوقتي بتسمح بكل حاجة 😬 — عدّلها وضيف قواعد لحد ما كل الحزم تبقى صح.</p>
+    <div class="table-wrap">
+      <table id="rules">
+        <thead><tr><th>#</th><th>الإجراء</th><th>من</th><th>إلى</th><th>المنفذ</th><th></th></tr></thead>
+        <tbody></tbody>
+        <tfoot><tr><td>∞</td><td colspan="5"><span class="pill bad">رفض</span> أي حاجة تانية (الرفض الافتراضي)</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="addRule" type="button">+ قاعدة جديدة</button>
+      <button class="btn" id="simulate" type="button">▶ شغّل المحاكاة</button>
+    </div>
+  </div>
+
+  <div class="card task" data-task="rules">
+    <div class="task-head"><h3>أمّن الشبكة</h3><span class="task-badge"></span></div>
+    <p>الحزم اللي تحت لازم كل واحدة يحصلها المطلوب. شغّل المحاكاة وشوف النتيجة.</p>
+    <div class="table-wrap">
+      <table id="packets">
+        <thead><tr><th>الحزمة</th><th>المطلوب</th><th>اللي حصل</th><th>القاعدة</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q1">
+    <div class="task-head"><h3>ليه بنحط خادم الويب في DMZ؟</h3><span class="task-badge"></span></div>
+    <div class="mcq choices" data-answer="b" data-explain="لاحظ الحزمة الأخيرة في المحاكاة: حتى لو خادم الويب اتخترق، مايقدرش يوصل لأجهزة الإدارة.">
+      <label class="choice"><input type="radio" name="fq1" value="a"> عشان الموقع يبقى أسرع</label>
+      <label class="choice"><input type="radio" name="fq1" value="b"> عشان الخوادم المعرّضة للإنترنت تبقى معزولة، فلو اتخترقت الضرر مايوصلش للشبكة الداخلية</label>
+      <label class="choice"><input type="radio" name="fq1" value="c"> عشان مانحتاجش جدار حماية خالص</label>
+      <label class="choice"><input type="radio" name="fq1" value="d"> عشان الطلاب يقدروا يدخلوا على قاعدة البيانات من البيت</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q2">
+    <div class="task-head"><h3>نهج انعدام الثقة (Zero Trust) والدفاع في العمق</h3><span class="task-badge"></span></div>
+    <p><b>1)</b> أنهي جملة بتوصف نهج انعدام الثقة؟</p>
+    <div class="mcq choices" data-answer="c">
+      <label class="choice"><input type="radio" name="fq2" value="a"> أي جهاز جوه الشبكة الداخلية موثوق تلقائيًا</label>
+      <label class="choice"><input type="radio" name="fq2" value="b"> جدار حماية قوي واحد كفاية</label>
+      <label class="choice"><input type="radio" name="fq2" value="c"> مفيش ثقة تلقائية — بنتحقق من الهوية والصلاحية في كل مرة وصول</label>
+    </div>
+    <p style="margin-top:12px"><b>2)</b> "الدفاع في العمق" معناه:</p>
+    <div class="mcq choices" data-answer="a">
+      <label class="choice"><input type="radio" name="fq3" value="a"> طبقات حماية متعددة (جدار حماية + DMZ + حماية الأجهزة + ...) عشان لو طبقة وقعت الباقي يحمي</label>
+      <label class="choice"><input type="radio" name="fq3" value="b"> نحط الخوادم في أعمق مكان في المبنى</label>
+      <label class="choice"><input type="radio" name="fq3" value="c"> نقفل الإنترنت خالص</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const FROM = { any: 'أي مكان', internet: '🌍 الإنترنت', dmz: '🟡 DMZ', lan: '🟢 LAN' };
+  const TO = { any: 'أي جهاز', web: '🖥️ خادم الويب', pcs: '💻 أجهزة الإدارة', db: '🗄️ قاعدة البيانات' };
+  const PORTS = ['any', '80', '443', '22', '5432', '3389'];
+  const ZONE_OF = { internet: 'internet', web: 'dmz', pcs: 'lan', db: 'lan' };
+
+  const PACKETS = [
+    { src: 'internet', dst: 'web', port: '443', want: 'allow', desc: 'زائر بيفتح موقع المدرسة (HTTPS)' },
+    { src: 'internet', dst: 'web', port: '80', want: 'allow', desc: 'زائر بيفتح الموقع (HTTP)' },
+    { src: 'internet', dst: 'web', port: '22', want: 'deny', desc: 'هاكر بيحاول يدخل على السيرفر SSH' },
+    { src: 'internet', dst: 'db', port: '5432', want: 'deny', desc: 'هاكر بيحاول يوصل لقاعدة البيانات' },
+    { src: 'web', dst: 'db', port: '5432', want: 'allow', desc: 'الموقع بيجيب نتايج الطلاب من قاعدة البيانات' },
+    { src: 'pcs', dst: 'web', port: '22', want: 'allow', desc: 'مسؤول الشبكة بيدير السيرفر من جهازه' },
+    { src: 'internet', dst: 'pcs', port: '3389', want: 'deny', desc: 'هاكر بيحاول يتحكم في جهاز الإدارة' },
+    { src: 'web', dst: 'pcs', port: '3389', want: 'deny', desc: 'خادم الويب (لو اتخترق) بيحاول يوصل لأجهزة الإدارة' },
+  ];
+  const HOST = { internet: '🌍 إنترنت', web: '🖥️ خادم الويب', pcs: '💻 أجهزة الإدارة', db: '🗄️ قاعدة البيانات' };
+
+  let rules = [{ action: 'allow', from: 'any', to: 'any', port: 'any' }];
+
+  const opts = (obj, sel) => Object.entries(obj).map(([v, t]) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${t}</option>`).join('');
+  function renderRules() {
+    const tb = document.querySelector('#rules tbody');
+    tb.innerHTML = '';
+    rules.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i + 1}</td>
+        <td><select data-k="action" aria-label="الإجراء">${opts({ allow: '✅ سماح', deny: '⛔ رفض' }, r.action)}</select></td>
+        <td><select data-k="from" aria-label="من">${opts(FROM, r.from)}</select></td>
+        <td><select data-k="to" aria-label="إلى">${opts(TO, r.to)}</select></td>
+        <td><select data-k="port" aria-label="المنفذ">${PORTS.map(p => `<option ${p === r.port ? 'selected' : ''} value="${p}">${p === 'any' ? 'أي منفذ' : p}</option>`).join('')}</select></td>
+        <td style="white-space:nowrap"><button class="btn ghost small" data-a="up" type="button" aria-label="لأعلى">▲</button>
+          <button class="btn ghost small" data-a="down" type="button" aria-label="لأسفل">▼</button>
+          <button class="btn danger small" data-a="del" type="button" aria-label="حذف">✕</button></td>`;
+      tr.querySelectorAll('select').forEach(s => s.onchange = () => { r[s.dataset.k] = s.value; });
+      tr.querySelector('[data-a=up]').onclick = () => { if (i) { [rules[i - 1], rules[i]] = [rules[i], rules[i - 1]]; renderRules(); } };
+      tr.querySelector('[data-a=down]').onclick = () => { if (i < rules.length - 1) { [rules[i + 1], rules[i]] = [rules[i], rules[i + 1]]; renderRules(); } };
+      tr.querySelector('[data-a=del]').onclick = () => { rules.splice(i, 1); renderRules(); };
+      tb.appendChild(tr);
+    });
+  }
+  document.getElementById('addRule').onclick = () => {
+    rules.push({ action: 'allow', from: 'internet', to: 'web', port: '443' });
+    renderRules();
+  };
+
+  function evaluate(pkt) {
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      const fromOk = r.from === 'any' || r.from === ZONE_OF[pkt.src];
+      const toOk = r.to === 'any' || r.to === pkt.dst;
+      const portOk = r.port === 'any' || r.port === pkt.port;
+      if (fromOk && toOk && portOk) return { action: r.action, rule: i + 1 };
+    }
+    return { action: 'deny', rule: '∞' };
+  }
+
+  function renderPackets(run) {
+    const tb = document.querySelector('#packets tbody');
+    let right = 0;
+    tb.innerHTML = PACKETS.map(p => {
+      const r = run ? evaluate(p) : null;
+      const ok = r && r.action === p.want;
+      if (ok) right++;
+      const pill = a => a === 'allow' ? '<span class="pill ok">سماح</span>' : '<span class="pill bad">رفض</span>';
+      return `<tr><td>${HOST[p.src]} ← ${HOST[p.dst]} :<b>${p.port}</b><br><small class="hint">${p.desc}</small></td>
+        <td>${pill(p.want)}</td><td>${r ? pill(r.action) + (ok ? ' ✅' : ' ❌') : '—'}</td><td>${r ? r.rule : ''}</td></tr>`;
+    }).join('');
+    return right;
+  }
+
+  document.getElementById('simulate').onclick = () => {
+    const right = renderPackets(true);
+    const res = document.querySelector('[data-task=rules] .result');
+    if (right === PACKETS.length) {
+      showResult(res, 'ok', `✓ ${right}/${PACKETS.length} — الشبكة متأمّنة! الموقع شغال للزوار، والإدارة والبيانات محمية. 🛡️`);
+      markDone('rules');
+    } else {
+      showResult(res, 'bad', `✗ ${right} من ${PACKETS.length} صح. بص على الحزم اللي عليها ❌ وعدّل القواعد (وافتكر: الترتيب مهم).`);
+    }
+  };
+
+  renderRules();
+  renderPackets(false);
+</script>
+</body>
+</html>

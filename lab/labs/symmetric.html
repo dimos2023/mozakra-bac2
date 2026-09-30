@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>التشفير المتماثل</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="symmetric" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="في التشفير المتماثل الطرفين بيستخدموا <b>نفس المفتاح</b> للتشفير وفك التشفير. سريع جدًا — بس المشكلة: إزاي توصّل المفتاح للطرف التاني بأمان؟"></div>
+
+  <!-- إحماء: شفرة قيصر -->
+  <div class="card tool">
+    <h2>🎡 إحماء: فكرة "المفتاح" بشفرة قيصر</h2>
+    <p class="hint">أقدم تشفير متماثل: كل حرف بيتزق عدد ثابت من الحروف. الرقم ده هو <b>المفتاح</b>.</p>
+    <div class="grid-2">
+      <div>
+        <label for="cIn">النص (حروف إنجليزي)</label>
+        <input type="text" id="cIn" class="ltr" value="HELLO STUDENTS">
+        <label for="cShift">المفتاح (الإزاحة): <span id="cShiftVal">3</span></label>
+        <input type="range" id="cShift" min="0" max="25" value="3" style="width:100%">
+      </div>
+      <div>
+        <label>الناتج</label>
+        <div class="output" id="cOut"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="caesar">
+    <div class="task-head"><h3>اكسر الشفرة بالتخمين 🕵️</h3><span class="task-badge"></span></div>
+    <p>اعترضنا الرسالة دي ومش معانا المفتاح:</p>
+    <div class="box ltr" style="font-size:1.2rem;font-weight:700">OAAWZ PZ ZHML</div>
+    <p class="hint">حطها فوق في خانة النص وحرّك المفتاح لحد ما يطلع كلام له معنى. (فيه 26 احتمال بس — عشان كده قيصر ضعيف!)</p>
+    <label for="caesarAns">الرسالة الأصلية:</label>
+    <input type="text" id="caesarAns" class="ltr">
+    <div class="row"><button class="btn" id="caesarCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <!-- AES -->
+  <div class="card tool">
+    <h2>🔐 تشفير حقيقي: AES-256</h2>
+    <p class="hint">ده نفس التشفير المتماثل اللي بيحمي بياناتك في HTTPS بعد المصافحة. المفتاح هنا كلمة سر مشتركة بينك وبين صاحبك.</p>
+    <div class="grid-2">
+      <div>
+        <h3>1) التشفير (عند المرسل)</h3>
+        <label for="aMsg">النص العادي (Plaintext)</label>
+        <textarea id="aMsg">موعد الامتحان يوم الخميس الساعة 10</textarea>
+        <label for="aKey">المفتاح المشترك</label>
+        <input type="text" id="aKey" value="my-secret-key">
+        <div class="row"><button class="btn" id="aEnc" type="button">🔒 شفّر</button></div>
+        <label>النص المشفّر (Ciphertext)</label>
+        <div class="box ltr" id="aOut">—</div>
+        <div class="row"><button class="btn ghost small" id="aCopy" type="button">انقله لخانة فك التشفير ←</button></div>
+      </div>
+      <div>
+        <h3>2) فك التشفير (عند المستلم)</h3>
+        <label for="dCt">النص المشفّر</label>
+        <textarea id="dCt" class="ltr" placeholder="الصق النص المشفّر هنا"></textarea>
+        <label for="dKey">المفتاح المشترك</label>
+        <input type="text" id="dKey" value="my-secret-key">
+        <div class="row"><button class="btn" id="aDec" type="button">🔓 فك التشفير</button></div>
+        <div class="result" id="dRes"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="encrypt">
+    <div class="task-head"><h3>شفّر رسالتين متطابقتين</h3><span class="task-badge"></span></div>
+    <p>اضغط <b>شفّر</b> مرتين على <u>نفس</u> الرسالة ونفس المفتاح. هتلاحظ إن النص المشفّر مختلف كل مرة! ده لأن كل عملية بتستخدم رقم عشوائي (IV) — عشان المتجسس ميعرفش إن الرسالتين زي بعض.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="secret">
+    <div class="task-head"><h3>فك رسالة سرية من منى 📨</h3><span class="task-badge"></span></div>
+    <p>منى إدتك المفتاح المشترك <b>إيد بإيد</b> على ورقة: <span class="kbd ltr">cyber2026</span> — وبعدين بعتتلك الرسالة المشفّرة دي على الإنترنت:</p>
+    <div class="box ltr" id="secretCt">...</div>
+    <p class="hint">فك تشفيرها في الأداة فوق، واكتب الرسالة هنا:</p>
+    <input type="text" id="secretAns">
+    <div class="row"><button class="btn" id="secretCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="wrongkey">
+    <div class="task-head"><h3>جرّب مفتاح غلط ❌</h3><span class="task-badge"></span></div>
+    <p>في أداة فك التشفير، غيّر حرف واحد بس في المفتاح وحاول تفك. هتلاقي إن فك التشفير <b>فشل تمامًا</b> — مش هيطلع نص قريب من الأصلي.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="q1">
+    <div class="task-head"><h3>سؤال: إيه أكبر مشكلة في التشفير المتماثل؟</h3><span class="task-badge"></span></div>
+    <div class="mcq choices" data-answer="b" data-explain="عشان كده HTTPS بيستخدم التشفير بالمفتاح العام الأول عشان يتفقوا على مفتاح الجلسة بأمان.">
+      <label class="choice"><input type="radio" name="q1" value="a"> إنه بطيء جدًا مقارنة بالتشفير بالمفتاح العام</label>
+      <label class="choice"><input type="radio" name="q1" value="b"> لازم الطرفين يتشاركوا نفس المفتاح بطريقة آمنة قبل ما يتكلموا</label>
+      <label class="choice"><input type="radio" name="q1" value="c"> مينفعش نفك التشفير بعد ما نشفّر</label>
+      <label class="choice"><input type="radio" name="q1" value="d"> بيحتاج مفتاح عام ومفتاح خاص</label>
+    </div>
+    <div class="row"><button class="btn" data-check-mcq type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  /* ---- قيصر ---- */
+  function caesar(text, shift) {
+    return text.replace(/[a-z]/gi, ch => {
+      const base = ch <= 'Z' ? 65 : 97;
+      return String.fromCharCode((ch.charCodeAt(0) - base + shift + 26) % 26 + base);
+    });
+  }
+  const cIn = document.getElementById('cIn'), cShift = document.getElementById('cShift');
+  function updCaesar() {
+    document.getElementById('cShiftVal').textContent = cShift.value;
+    document.getElementById('cOut').textContent = caesar(cIn.value, +cShift.value);
+  }
+  cIn.oninput = cShift.oninput = updCaesar;
+  updCaesar();
+
+  document.getElementById('caesarCheck').onclick = () => {
+    const task = document.querySelector('[data-task=caesar]');
+    const v = document.getElementById('caesarAns').value.toUpperCase().replace(/\s+/g, ' ').trim();
+    if (v === 'HTTPS IS SAFE') {
+      showResult(task.querySelector('.result'), 'ok', '✓ صح! المفتاح كان 7 (أو 19 لفك التشفير). لاحظ إنك كسرتها في ثواني بتجربة كل الاحتمالات — ده اسمه هجوم القوة الغاشمة (Brute Force).');
+      markDone('caesar');
+    } else {
+      showResult(task.querySelector('.result'), 'bad', '✗ لسه — كمّل تحريك المفتاح لحد ما تلاقي جملة إنجليزي مفهومة.');
+    }
+  };
+
+  /* ---- AES-GCM بمفتاح مشتق من كلمة سر (PBKDF2) ---- */
+  async function deriveKey(pass, salt) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function aesEncrypt(text, pass) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(pass, salt);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text)));
+    const all = new Uint8Array(28 + ct.length);
+    all.set(salt, 0); all.set(iv, 16); all.set(ct, 28);
+    return b64(all);
+  }
+  async function aesDecrypt(data, pass) {
+    const all = unb64(data);  // ممكن يرمي خطأ لو النص مش Base64
+    if (all.length < 29) throw new Error('format');
+    const key = await deriveKey(pass, all.slice(0, 16));
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: all.slice(16, 28) }, key, all.slice(28));
+    return dec.decode(pt);
+  }
+
+  let lastEnc = null;  // لمهمة "شفّر رسالتين متطابقتين"
+  document.getElementById('aEnc').onclick = async () => {
+    const msg = document.getElementById('aMsg').value, pass = document.getElementById('aKey').value;
+    if (!msg || !pass) return toast('اكتب رسالة ومفتاح');
+    const out = await aesEncrypt(msg, pass);
+    document.getElementById('aOut').textContent = out;
+    const task = document.querySelector('[data-task=encrypt]');
+    if (lastEnc && lastEnc.msg === msg && lastEnc.pass === pass && lastEnc.out !== out) {
+      showResult(task.querySelector('.result'), 'ok', '✓ شفت؟ نفس الرسالة ونفس المفتاح — ونص مشفّر مختلف تمامًا. ومع ذلك الاتنين بيتفكوا لنفس الرسالة.');
+      markDone('encrypt');
+    } else {
+      showResult(task.querySelector('.result'), 'info', 'تمام — اضغط شفّر مرة كمان على نفس الرسالة وقارن.');
+    }
+    lastEnc = { msg, pass, out };
+  };
+  document.getElementById('aCopy').onclick = () => {
+    const v = document.getElementById('aOut').textContent;
+    if (v && v !== '—') document.getElementById('dCt').value = v;
+  };
+
+  document.getElementById('aDec').onclick = async () => {
+    const ct = document.getElementById('dCt').value.trim(), pass = document.getElementById('dKey').value;
+    const res = document.getElementById('dRes');
+    if (!ct) return showResult(res, 'info', 'الصق نص مشفّر الأول.');
+    let bytesOk = true;
+    try { unb64(ct); } catch { bytesOk = false; }
+    if (!bytesOk) return showResult(res, 'bad', 'ده مش نص مشفّر صالح (لازم يتنسخ كامل).');
+    try {
+      const pt = await aesDecrypt(ct, pass);
+      showResult(res, 'ok', '🔓 الرسالة: <b>' + escapeHtml(pt) + '</b>');
+    } catch {
+      showResult(res, 'bad', '⛔ فشل فك التشفير! المفتاح غلط أو الرسالة اتعدلت في السكة. (AES-GCM بيكتشف كمان لو حد لعب في النص المشفّر)');
+      const t = document.querySelector('[data-task=wrongkey]');
+      showResult(t.querySelector('.result'), 'ok', '✓ بالظبط: حتى لو المفتاح فرق حرف واحد، مفيش أي معلومة بتطلع.');
+      markDone('wrongkey');
+    }
+  };
+
+  /* ---- رسالة منى السرية ---- */
+  const SECRET_TEXT = 'الاجتماع في معمل الحاسب بعد الفسحة';
+  aesEncrypt(SECRET_TEXT, 'cyber2026').then(ct => document.getElementById('secretCt').textContent = ct);
+  document.getElementById('secretCheck').onclick = () => {
+    const t = document.querySelector('[data-task=secret]');
+    const norm = s => s.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+    if (norm(document.getElementById('secretAns').value) === norm(SECRET_TEXT)) {
+      showResult(t.querySelector('.result'), 'ok', '✓ ممتاز! لاحظ إن المفتاح اتنقل "إيد بإيد" — دي بالظبط مشكلة التشفير المتماثل على الإنترنت.');
+      markDone('secret');
+    } else {
+      showResult(t.querySelector('.result'), 'bad', '✗ مش مطابقة. انسخ النص المشفّر كامل واستخدم المفتاح cyber2026.');
+    }
+  };
+</script>
+</body>
+</html>

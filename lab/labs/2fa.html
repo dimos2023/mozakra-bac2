@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>المصادقة الثنائية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+</head>
+<body data-lab="twofa" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="المصادقة الثنائية (2FA) بتستخدم <b>عاملين مستقلين من فئتين مختلفتين</b>: حاجة بتعرفها (الباسورد) + حاجة بتملكها (الموبايل). حتى لو الباسورد اتسرق، الهاكر مش هيدخل من غير الموبايل."></div>
+
+  <div class="grid-2">
+    <div class="card tool">
+      <h2>📱 تطبيق المصادقة على موبايلك</h2>
+      <div class="phone">
+        <div class="hint">حساب: student@school</div>
+        <div class="code" id="totp">------</div>
+        <div class="timer"><span id="bar"></span></div>
+        <div class="hint" style="margin-top:6px">الكود بيتغير كل 30 ثانية — باقي <b id="left">30</b> ث</div>
+      </div>
+      <p class="hint" style="margin-top:12px">الكود ده بيتحسب من <b>سر مشترك</b> بين الموبايل والموقع + الوقت الحالي (خوارزمية TOTP الحقيقية اللي بيستخدمها Google Authenticator).</p>
+    </div>
+
+    <div class="card tool">
+      <h2>🔐 صفحة تسجيل الدخول</h2>
+      <p class="hint">بيانات الدخول: اسم المستخدم <span class="kbd ltr">student</span> — الباسورد <span class="kbd ltr">Cyber@2026</span></p>
+      <label for="u">اسم المستخدم</label>
+      <input type="text" id="u" class="ltr" autocomplete="off">
+      <label for="p">كلمة المرور</label>
+      <input type="password" id="p" class="ltr" autocomplete="off">
+      <label for="c">كود التحقق (6 أرقام)</label>
+      <input type="text" id="c" class="ltr" inputmode="numeric" maxlength="6" autocomplete="off">
+      <div class="row">
+        <button class="btn" id="login" type="button">دخول</button>
+        <button class="btn danger" id="hacker" type="button">🦹 الهاكر يدخل بالباسورد المسروق</button>
+      </div>
+      <div class="result" id="loginRes"></div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="login">
+    <div class="task-head"><h3>ادخل بالعاملين</h3><span class="task-badge"></span></div>
+    <p>سجّل دخول باسم المستخدم والباسورد + الكود اللي ظاهر على الموبايل دلوقتي.</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="expired">
+    <div class="task-head"><h3>كود قديم؟ ⏰</h3><span class="task-badge"></span></div>
+    <p>اكتب الكود الحالي في ورقة، <b>استنى لحد ما يتغير</b>، وبعدين حاول تدخل بالكود القديم. الموقع هيعمل إيه؟ (ده بيحمي من إن حد يشوف الكود بتاعك ويستخدمه بعدين)</p>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="factors">
+    <div class="task-head"><h3>صنّف عوامل المصادقة</h3><span class="task-badge"></span></div>
+    <div class="table-wrap">
+      <table id="factorTable">
+        <thead><tr><th>العامل</th><th>الفئة</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px"><b>ولو موقع طلب منك كلمتين مرور ورا بعض — هل ده مصادقة ثنائية؟</b></p>
+    <div class="choices">
+      <label class="choice"><input type="radio" name="two" value="y"> أيوه، لأن فيه عاملين</label>
+      <label class="choice"><input type="radio" name="two" value="n"> لأ، لأن الاتنين من نفس الفئة (حاجة بتعرفها)</label>
+    </div>
+    <div class="row"><button class="btn" id="factorCheck" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  /* ---- TOTP (RFC 6238) ---- */
+  const secret = crypto.getRandomValues(new Uint8Array(20));
+  let hmacKey = null;
+  const STEP = 30;
+  crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']).then(k => { hmacKey = k; tick(); });
+
+  async function totp(counter) {
+    const msg = new ArrayBuffer(8);
+    const view = new DataView(msg);
+    view.setUint32(0, Math.floor(counter / 2 ** 32));
+    view.setUint32(4, counter >>> 0);
+    const h = new Uint8Array(await crypto.subtle.sign('HMAC', hmacKey, msg));
+    const off = h[19] & 0xf;
+    const bin = ((h[off] & 0x7f) << 24) | (h[off + 1] << 16) | (h[off + 2] << 8) | h[off + 3];
+    return String(bin % 1e6).padStart(6, '0');
+  }
+  const counterNow = () => Math.floor(Date.now() / 1000 / STEP);
+  const seen = new Set();  // أكواد ظهرت قبل كده على الموبايل
+
+  async function tick() {
+    if (!hmacKey) return;
+    const code = await totp(counterNow());
+    seen.add(code);
+    document.getElementById('totp').textContent = code.slice(0, 3) + ' ' + code.slice(3);
+    const left = STEP - Math.floor(Date.now() / 1000) % STEP;
+    document.getElementById('left').textContent = left;
+    document.getElementById('bar').style.width = (100 * left / STEP) + '%';
+  }
+  setInterval(tick, 1000);
+
+  /* ---- الدخول ---- */
+  document.getElementById('login').onclick = async () => {
+    const u = document.getElementById('u').value.trim(), p = document.getElementById('p').value;
+    const c = document.getElementById('c').value.replace(/\s/g, '');
+    if (u !== 'student' || p !== 'Cyber@2026') return showResult('#loginRes', 'bad', '⛔ اسم المستخدم أو كلمة المرور غلط.');
+    const now = await totp(counterNow());
+    if (c === now) {
+      showResult('#loginRes', 'ok', '✅ تم الدخول! عرفت الباسورد (حاجة بتعرفها) ومعاك الموبايل (حاجة بتملكها).');
+      showResult(document.querySelector('[data-task=login] .result'), 'ok', '✓ دخلت بعاملين مستقلين.');
+      markDone('login');
+    } else if (seen.has(c)) {
+      showResult('#loginRes', 'bad', '⛔ الكود ده انتهت صلاحيته! كل كود صالح لمدة 30 ثانية بس.');
+      showResult(document.querySelector('[data-task=expired] .result'), 'ok', '✓ الموقع رفض الكود القديم. حتى لو حد صوّر الكود بتاعك، بعد ثواني مش هيفيده.');
+      markDone('expired');
+    } else {
+      showResult('#loginRes', 'bad', '⛔ كود التحقق غلط.');
+    }
+  };
+
+  document.getElementById('hacker').onclick = () => {
+    document.getElementById('u').value = 'student';
+    document.getElementById('p').value = 'Cyber@2026';
+    const guess = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
+    document.getElementById('c').value = guess;
+    showResult('#loginRes', 'bad', `🦹 الهاكر عنده الباسورد، بس مش معاه الموبايل، فخمّن الكود ${guess}... ⛔ مرفوض! فرصة التخمين الصح 1 من مليون.`);
+    document.getElementById('c').value = '';
+  };
+
+  /* ---- تصنيف العوامل ---- */
+  const FACTORS = [
+    ['كلمة المرور', 'know'], ['بصمة الإصبع', 'are'], ['كود من تطبيق على الموبايل', 'have'],
+    ['رقم PIN', 'know'], ['بصمة الوجه', 'are'], ['كارت ذكي (Smart card)', 'have'],
+  ];
+  const tb = document.querySelector('#factorTable tbody');
+  FACTORS.forEach(([name], i) => {
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${name}</td><td><select data-i="${i}" aria-label="فئة ${name}">
+      <option value="">— اختار —</option><option value="know">🧠 حاجة بتعرفها</option>
+      <option value="have">📱 حاجة بتملكها</option><option value="are">🖐️ حاجة فيك (بيومترية)</option></select></td></tr>`);
+  });
+  document.getElementById('factorCheck').onclick = () => {
+    const res = document.querySelector('[data-task=factors] .result');
+    let right = 0;
+    tb.querySelectorAll('select').forEach(s => {
+      const ok = s.value === FACTORS[s.dataset.i][1];
+      if (ok) right++;
+      s.style.borderColor = s.value ? (ok ? 'var(--ok)' : 'var(--bad)') : '';
+    });
+    const two = document.querySelector('input[name=two]:checked');
+    if (right === FACTORS.length && two && two.value === 'n') {
+      showResult(res, 'ok', '✓ ممتاز! المصادقة الثنائية لازم تجمع فئتين مختلفتين.');
+      markDone('factors');
+    } else {
+      showResult(res, 'bad', `✗ التصنيف: ${right} من ${FACTORS.length} صح${two ? (two.value === 'n' ? '، والسؤال صح' : '، والسؤال غلط') : '، ولسه ماجاوبتش السؤال'}.`);
+    }
+  };
+</script>
+</body>
+</html>

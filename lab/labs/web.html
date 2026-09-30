@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>معمل الويب</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <script type="module" src="../assets/guard.js"></script>
+  <style>
+    .web-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .web-layout { grid-template-columns: 1fr; } }
+    .web-layout textarea.code { min-height: 340px; border-radius: 0 10px 10px 10px; }
+    .size-btns { display: flex; gap: 6px; }
+  </style>
+</head>
+<body data-lab="web" data-root="..">
+<main class="container">
+  <div id="labHead" data-lead="<b>HTML</b> = الهيكل، <b>CSS</b> = الشكل، <b>JavaScript</b> = السلوك. اكتب في الناحية دي وشوف صفحتك بتتبني قدامك في الناحية التانية."></div>
+
+  <div class="card tool">
+    <div class="web-layout">
+      <div>
+        <div class="tabs" role="tablist">
+          <button type="button" class="active" data-tab="html">HTML</button>
+          <button type="button" data-tab="css">CSS</button>
+          <button type="button" data-tab="js">JavaScript</button>
+        </div>
+        <textarea id="ed" class="code" spellcheck="false" aria-label="محرر الكود"></textarea>
+        <div class="row">
+          <button class="btn ghost small" id="resetWeb" type="button">↺ رجّع الكود الأصلي</button>
+        </div>
+      </div>
+      <div>
+        <div class="row" style="margin-top:0;justify-content:space-between">
+          <b>👁️ المعاينة</b>
+          <div class="size-btns">
+            <button class="btn ghost small" data-w="100%" type="button">🖥️ كمبيوتر</button>
+            <button class="btn ghost small" data-w="375px" type="button">📱 موبايل</button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;margin-top:8px">
+          <iframe id="preview" class="preview" title="معاينة الصفحة"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card task" data-task="w1">
+    <div class="task-head"><h3>HTML الدلالية (Semantic)</h3><span class="task-badge"></span></div>
+    <p>قسّم الصفحة بالعناصر اللي "ليها معنى": <code>&lt;header&gt;</code> و <code>&lt;nav&gt;</code> و <code>&lt;main&gt;</code> و <code>&lt;footer&gt;</code>، وخلّي فيها عنوان <code>&lt;h1&gt;</code> واحد بس. ده بيساعد محركات البحث (SEO) وقارئات الشاشة.</p>
+    <div class="row"><button class="btn" data-check="w1" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="w2">
+    <div class="task-head"><h3>إمكانية الوصول: صور بنص بديل</h3><span class="task-badge"></span></div>
+    <p>ضيف صورة واحدة على الأقل <code>&lt;img&gt;</code>، واتأكد إن <b>كل</b> صورة ليها <code>alt</code> بيوصفها (للي مابيشوفش أو لو الصورة ماحمّلتش).</p>
+    <p class="hint">مثال: <code class="ltr">&lt;img src="https://picsum.photos/300/150" alt="صورة فناء المدرسة"&gt;</code></p>
+    <div class="row"><button class="btn" data-check="w2" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="w3">
+    <div class="task-head"><h3>JavaScript: خلّي الزرار يشتغل</h3><span class="task-badge"></span></div>
+    <p>لما حد يدوس على الزرار اللي الـ id بتاعه <code>btn</code>، الكلام جوه العنصر اللي الـ id بتاعه <code>msg</code> لازم يتغير.</p>
+    <p class="hint">مساعدة: <code class="ltr">document.getElementById("msg").textContent = "..."</code></p>
+    <div class="row"><button class="btn" data-check="w3" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+
+  <div class="card task" data-task="w4">
+    <div class="task-head"><h3>التصميم المتجاوب (Responsive)</h3><span class="task-badge"></span></div>
+    <p>1) ضيف في HTML: <code class="ltr">&lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;</code><br>
+       2) ضيف في CSS قاعدة <code class="ltr">@media (max-width: 600px) { ... }</code> بتغيّر حاجة في الشكل على الموبايل.<br>
+       <span class="hint">جرّب زرار 📱 موبايل فوق وشوف الفرق.</span></p>
+    <div class="row"><button class="btn" data-check="w4" type="button">تحقق</button></div>
+    <div class="result"></div>
+  </div>
+</main>
+
+<script src="../assets/app.js"></script>
+<script>
+  const STARTER = {
+    html: `<div class="top">
+  <h1>موقع مدرستي</h1>
+  <a href="#">الرئيسية</a> | <a href="#">الأخبار</a>
+</div>
+
+<div class="content">
+  <p id="msg">أهلاً بيك في موقع المدرسة!</p>
+  <button id="btn">دوس هنا</button>
+</div>
+
+<div class="bottom">جميع الحقوق محفوظة 2026</div>
+`,
+    css: `body {
+  font-family: Tahoma, sans-serif;
+  margin: 0;
+  background: #f0f4ff;
+}
+.top, header {
+  background: #2f5bea;
+  color: white;
+  padding: 16px;
+}
+.content, main {
+  padding: 16px;
+  font-size: 20px;
+}
+button {
+  font-size: 18px;
+  padding: 8px 16px;
+}
+`,
+    js: `// الكود هنا بيشتغل جوه الصفحة
+const btn = document.getElementById("btn");
+
+`,
+  };
+  const KEYS = { html: 'cyberlab-web-html', css: 'cyberlab-web-css', js: 'cyberlab-web-js' };
+  const code = {};
+  for (const k of Object.keys(STARTER)) {
+    try { code[k] = localStorage.getItem(KEYS[k]) ?? STARTER[k]; } catch { code[k] = STARTER[k]; }
+  }
+  let tab = 'html';
+  const ed = document.getElementById('ed'), frame = document.getElementById('preview');
+
+  function build() {
+    return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>${code.css}</style></head>
+<body>${code.html}<script>${code.js.replace(/<\/script/gi, '<\\/script')}<\/script></body></html>`;
+  }
+  let timer = null;
+  function render(now) {
+    clearTimeout(timer);
+    const go = () => { frame.srcdoc = build(); };
+    now ? go() : (timer = setTimeout(go, 400));
+  }
+  function loaded() {
+    return new Promise(res => {
+      if (frame.contentDocument && frame.contentDocument.readyState === 'complete' && frame.srcdoc === build()) return res();
+      frame.addEventListener('load', () => res(), { once: true });
+      render(true);
+    });
+  }
+
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
+    tab = b.dataset.tab;
+    ed.value = code[tab];
+    ed.focus();
+  });
+  ed.addEventListener('input', () => {
+    code[tab] = ed.value;
+    try { localStorage.setItem(KEYS[tab], ed.value); } catch { /* تجاهل */ }
+    render();
+  });
+  ed.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); ed.setRangeText('  ', ed.selectionStart, ed.selectionEnd, 'end'); ed.dispatchEvent(new Event('input')); }
+  });
+  document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { frame.style.width = b.dataset.w; });
+  document.getElementById('resetWeb').onclick = () => {
+    if (!confirm('هترجع كل الكود (HTML و CSS و JS) للأصل. متأكد؟')) return;
+    Object.assign(code, STARTER);
+    for (const k of Object.keys(KEYS)) { try { localStorage.removeItem(KEYS[k]); } catch { /* تجاهل */ } }
+    ed.value = code[tab];
+    render(true);
+  };
+
+  /* ---- الفحوصات ---- */
+  const CHECKS = {
+    async w1(doc) {
+      const need = ['header', 'nav', 'main', 'footer'];
+      const missing = need.filter(t => !doc.querySelector(t));
+      const h1 = doc.querySelectorAll('h1').length;
+      if (missing.length) return [false, 'ناقص: ' + missing.map(t => `&lt;${t}&gt;`).join(' و ')];
+      if (h1 !== 1) return [false, `لازم يبقى فيه &lt;h1&gt; واحد بالظبط (عندك ${h1}).`];
+      return [true, 'هيكل دلالي ممتاز! كده أي برنامج يفهم أجزاء صفحتك.'];
+    },
+    async w2(doc) {
+      const imgs = [...doc.querySelectorAll('img')];
+      if (!imgs.length) return [false, 'مفيش ولا صورة &lt;img&gt;.'];
+      const bad = imgs.filter(i => !(i.getAttribute('alt') || '').trim());
+      if (bad.length) return [false, `${bad.length} صورة من غير alt.`];
+      return [true, `كل الصور (${imgs.length}) ليها وصف بديل ♿`];
+    },
+    async w3(doc, win) {
+      const btn = doc.getElementById('btn'), msg = doc.getElementById('msg');
+      if (!btn || !msg) return [false, 'لازم يبقى فيه عنصر id="btn" وعنصر id="msg".'];
+      const before = msg.textContent;
+      btn.click();
+      await new Promise(r => setTimeout(r, 50));
+      const after = msg.textContent;
+      if (before === after) return [false, 'دوست على الزرار بس الكلام في msg ماتغيرش. استخدم addEventListener("click", ...).'];
+      return [true, `الزرار شغال! الكلام اتغير لـ: "${escapeHtml(after)}"`];
+    },
+    async w4(doc) {
+      const meta = doc.querySelector('meta[name="viewport"]');
+      if (!meta || !/width\s*=\s*device-width/.test(meta.getAttribute('content') || '')) return [false, 'ناقص وسم meta viewport فيه width=device-width.'];
+      let media = 0;
+      for (const sheet of doc.styleSheets) {
+        try { for (const r of sheet.cssRules) if (r.type === CSSRule.MEDIA_RULE && /width/.test(r.conditionText || r.media.mediaText)) media++; } catch { /* تجاهل */ }
+      }
+      if (!media) return [false, 'مفيش قاعدة @media فيها max-width أو min-width في الـ CSS.'];
+      return [true, `ممتاز — الصفحة متجاوبة (${media} قاعدة @media).`];
+    },
+  };
+  document.querySelectorAll('[data-check]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.check;
+    await loaded();
+    const doc = frame.contentDocument;
+    const [ok, msg] = await CHECKS[id](doc, frame.contentWindow);
+    const res = b.closest('.card').querySelector('.result');
+    showResult(res, ok ? 'ok' : 'bad', (ok ? '✓ ' : '✗ ') + msg);
+    if (ok) markDone(id);
+    // رجّع الصفحة لحالتها الأصلية بعد اختبار الزرار
+    if (id === 'w3') render(true);
+  });
+
+  ed.value = code.html;
+  render(true);
+</script>
+</body>
+</html>

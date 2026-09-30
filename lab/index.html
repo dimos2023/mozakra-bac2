@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="guard-pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <title>معمل البرمجة والأمن السيبراني</title>
+  <meta name="description" content="منصة تطبيقية لطلاب الصف الثاني الثانوي — مادة البرمجة والذكاء الاصطناعي: تشفير، أمن سيبراني، وبرمجة.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+  <script type="module" src="assets/guard.js"></script>
+</head>
+<body data-root=".">
+  <main class="container">
+    <section class="hero">
+      <h1>أهلاً بيك في المعمل 👋</h1>
+      <p class="lead">هنا هتجرب بإيدك كل اللي بتدرسه في منهج <b>البرمجة والذكاء الاصطناعي — الصف الثاني الثانوي</b>:
+        تشفّر وتفك، تكتشف التزوير، تحمي شبكة، وتكتب كود حقيقي. كل مهمة بتتصحح في ساعتها والنتيجة بتظهر قدامك.</p>
+
+      <div class="card" id="nameCard">
+        <label for="studentName">اكتب اسمك (عشان يظهر في التقرير اللي هتبعته للمدرس)</label>
+        <div class="row" style="margin-top:0">
+          <input type="text" id="studentName" placeholder="مثلاً: يوسف أحمد" style="flex:1;min-width:200px">
+          <button class="btn" id="saveName" type="button">حفظ</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><b id="stDone">0</b><span>مهمة خلصتها</span></div>
+        <div class="stat"><b id="stTotal">0</b><span>إجمالي المهام</span></div>
+        <div class="stat"><b id="stPct">0%</b><span>نسبة الإنجاز</span></div>
+        <div class="stat"><b id="stLabs">0</b><span>معمل مكتمل</span></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="copyReport" type="button">📋 انسخ تقرير النتيجة للمدرس</button>
+        <button class="btn ghost" id="resetAll" type="button">إعادة البدء من الصفر</button>
+      </div>
+      <div class="result" id="reportMsg"></div>
+    </section>
+
+    <div id="labsHolder"></div>
+  </main>
+
+  <footer>التقدم محفوظ على جهازك بس. لو غيرت المتصفح أو مسحت البيانات هيبدأ من جديد.</footer>
+
+  <script src="assets/app.js"></script>
+  <script>
+    function renderHome() {
+      const holder = document.getElementById('labsHolder');
+      holder.innerHTML = '';
+      let done = 0, total = 0, labsDone = 0;
+      for (const [cat, info] of Object.entries(CATS)) {
+        const labs = LABS.filter(l => l.cat === cat);
+        const sec = document.createElement('section');
+        sec.innerHTML = `<h2 class="section-title">${info.icon} ${info.title}</h2><div class="labs"></div>`;
+        const grid = sec.querySelector('.labs');
+        for (const lab of labs) {
+          const s = labStats(lab);
+          done += s.done; total += s.total; if (s.done === s.total) labsDone++;
+          const a = document.createElement('a');
+          a.className = 'lab-card';
+          a.href = lab.href;
+          a.innerHTML = `<span class="ico">${lab.icon}</span>
+            <h3>${lab.title}</h3>
+            <p>${lab.desc}</p>
+            <div class="meta"><span class="lesson-tag" style="margin:0">الدرس ${lab.lesson}</span>
+              <div class="bar"><span style="width:${100 * s.done / s.total}%"></span></div>
+              <span>${s.done}/${s.total}</span></div>`;
+          grid.appendChild(a);
+        }
+        holder.appendChild(sec);
+      }
+      document.getElementById('stDone').textContent = done;
+      document.getElementById('stTotal').textContent = total;
+      document.getElementById('stPct').textContent = Math.round(100 * done / total) + '%';
+      document.getElementById('stLabs').textContent = labsDone;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const inp = document.getElementById('studentName');
+      inp.value = getName();
+      document.getElementById('saveName').onclick = () => {
+        setName(inp.value.trim());
+        document.querySelector('.student-chip').textContent = inp.value.trim() ? '👤 ' + inp.value.trim() : '';
+        toast('تم حفظ الاسم');
+      };
+
+      document.getElementById('copyReport').onclick = async () => {
+        const name = getName() || '(بدون اسم)';
+        let lines = [`📊 تقرير معمل البرمجة والأمن السيبراني`, `الطالب: ${name}`, `التاريخ: ${new Date().toLocaleString('ar-EG')}`, ''];
+        let done = 0, total = 0;
+        for (const lab of LABS) {
+          const s = labStats(lab);
+          done += s.done; total += s.total;
+          lines.push(`${s.done === s.total ? '✅' : s.done ? '🟡' : '⬜'} ${lab.title}: ${s.done}/${s.total}`);
+        }
+        lines.push('', `الإجمالي: ${done}/${total} (${Math.round(100 * done / total)}%)`);
+        const text = lines.join('\n');
+        const msg = document.getElementById('reportMsg');
+        try {
+          await navigator.clipboard.writeText(text);
+          showResult(msg, 'ok', 'اتنسخ التقرير ✓ — الصقه في رسالة للمدرس (واتساب مثلاً).');
+        } catch {
+          showResult(msg, 'info', 'انسخ النص ده يدوي:<pre class="output">' + escapeHtml(text) + '</pre>');
+        }
+      };
+
+      document.getElementById('resetAll').onclick = () => {
+        if (!confirm('متأكد؟ كل تقدمك هيتمسح.')) return;
+        saveProgress({});
+        renderHome();
+        toast('تم المسح');
+      };
+
+      renderHome();
+    });
+  </script>
+</body>
+</html>
