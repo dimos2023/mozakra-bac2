@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>فحص كل الرسومات</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/css/style.css?v=7">
+<style>
+  body{margin:0;padding:14px;background:#fff}
+  .lbl{font:600 13px "IBM Plex Sans Arabic";color:#0F6470;margin:18px 0 6px;
+       border-top:2px solid #ddd;padding-top:8px}
+  .wrap{max-width:900px;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="wrap" id="out">جارٍ التحميل…</div>
+<script type="module">
+const file = new URLSearchParams(location.search).get("f") || "/seed/content-term1.json";
+const from = +(new URLSearchParams(location.search).get("from") || 1);
+const to   = +(new URLSearchParams(location.search).get("to")   || 20);
+const data = await (await fetch(file)).json();
+let h = "";
+data.filter(s => s.n >= from && s.n <= to).forEach(s => {
+  (s.concepts || []).forEach((c, i) => {
+    const html = (c.body || "") + (c.body2 || "");
+    const figs = html.match(/<figure class="fig">[\s\S]*?<\/figure>/g) || [];
+    figs.forEach((f, j) => {
+      h += `<div class="lbl">حصة ${s.n} · مفهوم ${i + 1} · شكل ${j + 1} — ${c.t}</div>` + f;
+    });
+  });
+});
+document.getElementById("out").innerHTML = h || "لا توجد رسومات";
+</script>
+</body>
+</html>
