@@ -391,9 +391,11 @@ function draw() {
                                        state.groups, state.groupFilter,
                                        state.allAtt || [], releasedCount());
   } else if (state.view === "attendance") {
-    if (!state.allAtt || !state.students) {
+    if (!state.allAtt) {
       el.main.innerHTML = '<div class="empty">جارٍ تحميل كشف الحضور…</div>';
-      Promise.all([loadAllAttendance(), state.students ? state.students : loadStudents()])
+      // نعيد تحميل قائمة الطلبة مع كل فتح للكشف، فالطالب المقبول حديثًا
+      // يظهر فورًا بدل أن ينتظر المدرس ضغط «تحديث».
+      Promise.all([loadAllAttendance(), loadStudents()])
         .then(([att, studs]) => {
           state.allAtt = att;
           state.students = studs;

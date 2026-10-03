@@ -205,7 +205,10 @@ export function attendanceToggle(session, openId, count) {
 /** صفحة الحضور: مصفوفة الطلبة × الحصص. */
 export function renderAttendance(sessions, students, records, openId) {
   const released = sessions.filter(s => s.released);
-  const learners = students.filter(s => s.role === "student" && s.uid);
+  // الطالب المقبول حديثًا بلا uid (لم يسجّل دخوله بعد) يظهر في الكشف
+  // بخانات معطّلة بدل أن يختفي تمامًا، فيعرف المدرس أنه مضاف فعلًا.
+  const learners = students.filter(s => s.role === "student");
+  const canMark  = learners.filter(s => s.uid);
   const key = (sid, uid) => sid + "_" + uid;
   const map = new Set(records.map(r => key(r.sessionId, r.uid)));
 
@@ -218,7 +221,7 @@ export function renderAttendance(sessions, students, records, openId) {
   /* --- حالة النافذة --- */
   h += openSession
     ? `<div class="att open no-print">
-        <div class="att-h"><span class="att-ico">◉</span>التسجيل مفتوح على حصة ${openSession.n} — سجّل ${todayCount} من ${learners.length}</div>
+        <div class="att-h"><span class="att-ico">◉</span>التسجيل مفتوح على حصة ${openSession.n} — سجّل ${todayCount} من ${canMark.length}</div>
         <div class="att-act">
           <button class="tbtn bad" type="button" data-act="close-att">اقفل التسجيل</button>
         </div></div>`
@@ -236,10 +239,11 @@ export function renderAttendance(sessions, students, records, openId) {
   /* --- إحصائيات ---
      الجدول يعرض الموقوفين أيضًا لأن حضورهم السابق سجلّ،
      لكن الإحصائيات تُحسب على النشطين وحدهم فلا يشوّهها من خرج من الفصل. */
-  const totals = learners.map(s => released.filter(x => map.has(key(x.id, s.uid))).length);
+  const totals = learners.map(s =>
+    s.uid ? released.filter(x => map.has(key(x.id, s.uid))).length : 0);
   const activeTotals = learners
-    .map((s, i) => ({ active: s.active !== false, t: totals[i] }))
-    .filter(x => x.active).map(x => x.t);
+    .map((s, i) => ({ ok: s.uid && s.active !== false, t: totals[i] }))
+    .filter(x => x.ok).map(x => x.t);
   const avg = activeTotals.length
     ? Math.round(activeTotals.reduce((a, b) => a + b, 0) / activeTotals.length * 10) / 10 : 0;
   const perfect = activeTotals.filter(t => t === released.length).length;
@@ -266,16 +270,25 @@ export function renderAttendance(sessions, students, records, openId) {
   learners.forEach((st, i) => {
     const total = totals[i];
     const pct = released.length ? Math.round(total / released.length * 100) : 0;
-    h += `<tr><td class="att-name">${escapeHTML(st.name)}${
-      st.active ? "" : ' <span class="hit-k">(موقوف)</span>'}</td>`;
+    const noUid = !st.uid;
+    h += `<tr${noUid ? ' class="att-pending"' : ""}><td class="att-name">${escapeHTML(st.name)}${
+      st.active ? "" : ' <span class="hit-k">(موقوف)</span>'}${
+      noUid ? ' <span class="hit-k">(لسه ما دخلش الموقع)</span>' : ""}</td>`;
     released.forEach(s => {
+      if (noUid) {
+        h += `<td class="att-cell"><span class="attx na"
+          title="${escapeHTML(st.name)} — لازم يسجّل دخوله مرة واحدة الأول">–</span></td>`;
+        return;
+      }
       const on = map.has(key(s.id, st.uid));
       h += `<td class="att-cell"><button class="attx${on ? " on" : ""}" type="button"
         data-act="toggle-att" data-sid="${escapeHTML(s.id)}" data-uid="${escapeHTML(st.uid)}"
         title="${escapeHTML(st.name)} — حصة ${s.n}: ${on ? "حاضر" : "غائب"}"
         aria-label="${on ? "حاضر" : "غائب"}">${on ? "✓" : "·"}</button></td>`;
     });
-    h += `<td class="att-total"><span class="num">${total}/${released.length}</span>
+    h += noUid
+      ? `<td class="att-total"><span class="num hit-k">–</span></td></tr>`
+      : `<td class="att-total"><span class="num">${total}/${released.length}</span>
       <span class="mini-bar"><span style="width:${pct}%"></span></span></td></tr>`;
   });
 
@@ -284,12 +297,12 @@ export function renderAttendance(sessions, students, records, openId) {
 
 export function attendanceCSV(sessions, students, records) {
   const released = sessions.filter(s => s.released);
-  const learners = students.filter(s => s.role === "student" && s.uid);
+  const learners = students.filter(s => s.role === "student");
   const map = new Set(records.map(r => r.sessionId + "_" + r.uid));
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = [["name", "email", ...released.map(s => "S" + s.n), "total"].map(esc).join(",")];
   learners.forEach(st => {
-    const cells = released.map(s => (map.has(s.id + "_" + st.uid) ? "1" : "0"));
+    const cells = released.map(s => (st.uid && map.has(s.id + "_" + st.uid) ? "1" : "0"));
     lines.push([st.name, st.email, ...cells,
       cells.filter(c => c === "1").length].map(esc).join(","));
   });
