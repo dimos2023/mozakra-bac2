@@ -938,3 +938,309 @@ export function pendingHTML(req, groups) {
     </div>
     <button class="gbtn" type="button" id="jRecheck">تحقّق دلوقتي</button>`;
 }
+
+/* ============================================================
+   الاختبارات أونلاين
+   ------------------------------------------------------------
+   الورقة الواحدة تُرسم بثلاث أوضاع:
+     take    الطالب يحل — البدائل قابلة للضغط والعدّاد شغّال
+     review  بعد عرض النتائج — إجابته والصحيحة والتعليل
+     preview المدرس يراجع الأسئلة قبل الفتح — الإجابة ظاهرة
+   ============================================================ */
+
+/** شريط ينبّه الطالب أن هناك اختبارًا مفتوحًا لم يسلّمه بعد. */
+export function examBanner(x) {
+  if (!x) return "";
+  return `<div class="att open no-print">
+    <div class="att-h"><span class="att-ico">!</span>المدرس فتح اختبارًا</div>
+    <p><b>${escapeHTML(x.title)}</b> — ${x.count} سؤالًا في ${x.mins} دقيقة.
+       ${escapeHTML(x.sub || "")}</p>
+    <div class="att-act">
+      <button class="tbtn ok" type="button" data-act="exam-start" data-id="${escapeHTML(x.id)}">ابدأ الاختبار</button>
+      <button class="tbtn" type="button" data-view-go="exams">صفحة الاختبارات</button>
+    </div>
+  </div>`;
+}
+
+/** بطاقة اختبار في القائمة. */
+function examCardHTML(x, ctx) {
+  const sub = ctx.mySubs?.get(x.id) || null;
+  const n   = ctx.counts?.get(x.id) ?? null;
+
+  let state, msg, acts = "";
+
+  if (ctx.isTeacher) {
+    state = x.open ? "open" : "idle";
+    msg = x.open
+      ? `الاختبار مفتوح — ظاهر في صفحات كل الطلبة. عدد من سلّم: <b>${n ?? "…"}</b>.`
+      : "مقفول — أسئلته مش بتوصل أجهزة الطلبة أصلًا. راجعها وافتحه لما تكون جاهز.";
+    acts = `
+      <button class="tbtn" type="button" data-act="exam-preview" data-id="${escapeHTML(x.id)}">راجع الأسئلة</button>
+      <button class="tbtn ${x.open ? "bad" : "ok"}" type="button"
+              data-act="${x.open ? "exam-close" : "exam-open"}" data-id="${escapeHTML(x.id)}">${
+        x.open ? "اقفل الاختبار" : "افتح الاختبار للطلبة"}</button>
+      <button class="tbtn" type="button" data-act="exam-results" data-id="${escapeHTML(x.id)}">النتائج${
+        n ? ` (${n})` : ""}</button>`;
+  } else if (sub) {
+    const mark = Number.isFinite(sub.score) ? sub.score : null;
+    if (x.showResults && (x.keyPayload || mark !== null)) {
+      state = "done";
+      msg = mark !== null
+        ? `درجتك <b>${mark} من ${sub.total || x.total}</b>.`
+        : "النتيجة ظهرت — افتح ورقتك لتشوف التصحيح.";
+      acts = `<button class="tbtn ok" type="button" data-act="exam-review" data-id="${escapeHTML(x.id)}">شوف ورقتك والتصحيح</button>`;
+    } else {
+      state = "wait";
+      msg = "ورقتك اتسلّمت. النتيجة هتظهر هنا لما المدرس يعرضها.";
+    }
+  } else if (x.open) {
+    state = "open";
+    msg = `جاهز للحل — ${x.count} سؤالًا في ${x.mins} دقيقة. التسليم مرة واحدة فقط.`;
+    acts = `<button class="gbtn primary" type="button" data-act="exam-start" data-id="${escapeHTML(x.id)}">ابدأ الاختبار</button>`;
+  } else {
+    state = "idle";
+    msg = "مش مفتوح حاليًا.";
+  }
+
+  return `<article class="xcard ${state}">
+    <div class="xc-head">
+      <span class="xc-mark">?</span>
+      <div>
+        <h3>${escapeHTML(x.title)}</h3>
+        <p class="xc-sub">${escapeHTML(x.sub || "")}</p>
+      </div>
+    </div>
+    <div class="xc-chips">
+      <span class="chip">${x.count} سؤال</span>
+      <span class="chip">${x.total} درجة</span>
+      <span class="chip">${x.mins} دقيقة</span>
+      <span class="chip">حصة ${x.from} ← ${x.to}</span>
+    </div>
+    <p class="xc-msg">${msg}</p>
+    ${acts ? `<div class="xc-act">${acts}</div>` : ""}
+  </article>`;
+}
+
+/** صفحة الاختبارات — قائمة بما هو متاح. */
+export function renderExams(exams, ctx) {
+  let h = `<header class="page-head"><h2>الاختبارات</h2>
+    <p>${ctx.isTeacher
+      ? "الاختبار بيُرفع مقفولًا. راجع الأسئلة الأول، وبعدين افتحه فيظهر في صفحات كل الطلبة المسجّلين."
+      : "الاختبار بيظهر هنا وقت ما المدرس يفتحه. اقرأ التعليمات كويس قبل ما تبدأ."}</p></header>`;
+
+  if (!exams.length) {
+    return h + `<div class="empty">${ctx.isTeacher
+      ? "مفيش اختبارات مرفوعة. شغّل <span class=\"mail\">node seed-exam.js</span> من مجلد seed."
+      : "مفيش اختبار متاح حاليًا."}</div>`;
+  }
+
+  return h + `<div class="xgrid">${exams.map(x => examCardHTML(x, ctx)).join("")}</div>`;
+}
+
+/** شريط التعليمات أعلى الورقة. */
+function rulesHTML(x) {
+  if (!x.rules?.length) return "";
+  return `<div class="box warn xrules"><div class="bt"><span class="ic">!</span>تعليمات الاختبار</div>
+    <ul>${x.rules.map(r => `<li>${r}</li>`).join("")}</ul></div>`;
+}
+
+/**
+ * ورقة الاختبار.
+ * ctx = { mode, answers, key, grade, name, onNow }
+ */
+export function renderExamPaper(x, ctx) {
+  const mode = ctx.mode || "take";
+  const key  = new Map((ctx.key || []).map(k => [k.n, k]));
+  const ans  = ctx.answers || {};
+
+  let h = `<div class="topbar no-print">
+    <button class="tbtn" type="button" data-act="exam-back">← رجوع للاختبارات</button>
+    <span class="spacer"></span>
+    ${mode === "take"
+      ? `<span class="xtimer" id="xtimer">--:--</span>
+         <button class="tbtn ok" type="button" data-act="exam-submit">سلّم الاختبار</button>`
+      : `<button class="tbtn" type="button" data-act="print">طباعة / PDF</button>`}
+  </div>`;
+
+  /* --- ترويسة الورقة --- */
+  h += `<header class="xpaper-head">
+    <div class="xph-eyebrow">${escapeHTML(track().grade)} · ${escapeHTML(track().eyebrow)}</div>
+    <h2>${escapeHTML(x.title)}</h2>
+    <p>${escapeHTML(x.sub || "")}</p>
+    <div class="xph-meta">
+      <span>عدد الأسئلة: <b>${x.count}</b></span>
+      <span>الدرجة الكلية: <b>${x.total}</b></span>
+      <span>الزمن: <b>${x.mins} دقيقة</b></span>
+      ${ctx.name ? `<span>الطالب: <b>${escapeHTML(ctx.name)}</b></span>` : ""}
+    </div>
+  </header>`;
+
+  if (mode === "take") {
+    h += rulesHTML(x);
+    h += `<div class="xprog no-print" id="xprog"></div>`;
+  }
+
+  if (mode === "preview") {
+    h += `<div class="box exam xprev-note"><div class="bt"><span class="ic">!</span>معاينة المدرس</div>
+      الإجابة الصحيحة والتعليل ظاهرين لك هنا فقط. الطالب يشوف الأسئلة والبدائل بس،
+      ونموذج الإجابة مش بينزل جهازه أصلًا.</div>`;
+  }
+
+  if (mode === "review" && ctx.grade) {
+    const g = ctx.grade;
+    h += `<div class="xscore ${g.pct >= 50 ? "pass" : "fail"}">
+      <div class="xs-n">${g.score}<span>/${g.total}</span></div>
+      <div class="xs-b">
+        <div class="xs-t">${g.pct >= 85 ? "ممتاز" : g.pct >= 65 ? "جيد جدًا" : g.pct >= 50 ? "ناجح" : "محتاج مراجعة"}</div>
+        <div class="xs-s">${g.pct}% · صح ${g.score} · غلط ${g.total - g.score - g.blank} · بدون إجابة ${g.blank}</div>
+      </div>
+    </div>`;
+  }
+
+  /* --- الأسئلة قسمًا قسمًا --- */
+  (x.sections || []).forEach(sec => {
+    const qs = x.qs.filter(q => q.sec === sec.i);
+    if (!qs.length) return;
+    h += `<div class="xsec"><div class="xsec-t">${escapeHTML(sec.t)}</div>
+      <div class="xsec-l">${escapeHTML(sec.lead || "")}</div>
+      <div class="xsec-m">${sec.marks} درجة</div></div>`;
+
+    qs.forEach(q => {
+      const k = key.get(q.n);
+      const mine = ans[q.n];
+      const picked = mine !== undefined && mine !== null;
+      const ok = k && picked && Number(mine) === k.a;
+
+      h += `<div class="xq${mode === "review" && k ? (ok ? " ok" : picked ? " bad" : " blank") : ""}">
+        <div class="xq-h"><span class="xq-n">${q.n}</span><div class="xq-t">${q.t}</div></div>
+        <div class="xopts">`;
+
+      q.o.forEach((o, i) => {
+        const isMine = picked && Number(mine) === i;
+        const isRight = k && k.a === i;
+        const cls = [
+          "xopt",
+          mode === "take" ? "live" : "",
+          isMine ? "mine" : "",
+          mode !== "take" && isRight ? "right" : "",
+          mode !== "take" && isMine && !isRight ? "wrong" : ""
+        ].filter(Boolean).join(" ");
+        const tag = mode === "take" ? "button" : "div";
+        const attrs = mode === "take"
+          ? ` type="button" data-act="exam-pick" data-n="${q.n}" data-i="${i}" aria-pressed="${isMine}"`
+          : "";
+        h += `<${tag} class="${cls}"${attrs}>
+          <span class="xo-l">${LTR[i] || i + 1}</span><span class="xo-t">${o}</span>
+          ${mode !== "take" && isRight ? '<span class="xo-f">الصحيحة</span>' : ""}
+          ${mode !== "take" && isMine && !isRight ? '<span class="xo-f bad">إجابتك</span>' : ""}
+        </${tag}>`;
+      });
+
+      h += "</div>";
+
+      if (mode !== "take" && k) {
+        h += `<div class="xwhy"><b>التعليل:</b> ${k.why}
+          <span class="xwhy-s">حصة ${k.s}</span></div>`;
+      }
+      if (mode === "review" && !picked) {
+        h += '<div class="xblank">ماجاوبتش على السؤال ده.</div>';
+      }
+      h += "</div>";
+    });
+  });
+
+  if (mode === "take") {
+    h += `<div class="xfoot no-print">
+      <p>راجع إجاباتك قبل التسليم — <b>التسليم مرة واحدة فقط ولا يمكن التعديل بعده</b>.</p>
+      <button class="gbtn primary" type="button" data-act="exam-submit">سلّم الاختبار</button>
+      <div class="jerr" id="xErr" hidden></div>
+    </div>`;
+  }
+
+  return h;
+}
+
+/** صفحة نتائج الاختبار — للمدرس. */
+export function renderExamResults(x, rows, key, ctx = {}) {
+  let h = `<div class="topbar no-print">
+    <button class="tbtn" type="button" data-act="exam-back">← رجوع للاختبارات</button>
+    <span class="spacer"></span>
+    <button class="tbtn" type="button" data-act="exam-refresh" data-id="${escapeHTML(x.id)}">تحديث</button>
+    <button class="tbtn" type="button" data-act="exam-csv" data-id="${escapeHTML(x.id)}">تصدير CSV</button>
+    <button class="tbtn" type="button" data-act="print">طباعة</button>
+    <button class="tbtn ${x.showResults ? "on" : "ok"}" type="button"
+            data-act="${x.showResults ? "exam-hide-results" : "exam-show-results"}"
+            data-id="${escapeHTML(x.id)}">${
+      x.showResults ? "النتائج معروضة للطلبة" : "اعرض النتائج للطلبة"}</button>
+  </div>`;
+
+  h += `<header class="page-head"><h2>نتائج ${escapeHTML(x.title)}</h2>
+    <p>التصحيح آلي. «اعرض النتائج» بيخلّي كل طالب يشوف درجته وورقته مصحَّحة بالتعليل.</p></header>`;
+
+  const expected = ctx.learners ?? null;
+
+  if (!rows.length) {
+    return h + `<div class="empty">محدش سلّم ورقته لحد دلوقتي.</div>`;
+  }
+
+  const graded = rows.map(r => ({ row: r, g: ctx.grade(r) }))
+                     .sort((a, b) => b.g.score - a.g.score);
+  const scores = graded.map(x2 => x2.g.score);
+  const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10;
+  const top = Math.max(...scores);
+  const passed = scores.filter(s => s >= key.length / 2).length;
+
+  h += `<div class="stats">
+    <div class="stat"><div class="sv">${rows.length}${expected ? `<span class="sv-of">/${expected}</span>` : ""}</div><div class="sl">سلّم ورقته</div></div>
+    <div class="stat"><div class="sv">${avg}</div><div class="sl">متوسط الدرجات من ${key.length}</div></div>
+    <div class="stat"><div class="sv">${top}</div><div class="sl">أعلى درجة</div></div>
+    <div class="stat"><div class="sv">${passed}</div><div class="sl">فوق النصف</div></div>
+  </div>`;
+
+  /* --- جدول الطلبة --- */
+  h += `<div class="tw"><table><caption>درجات الطلبة</caption>
+    <thead><tr><th>الطالب</th><th>الدرجة</th><th>النسبة</th><th>بدون إجابة</th><th>وقت التسليم</th><th>الزمن</th></tr></thead><tbody>`;
+  graded.forEach(({ row, g }) => {
+    const mins = row.ms ? Math.round(row.ms / 60000) : null;
+    h += `<tr><td>${escapeHTML(row.name || row.email)}</td>
+      <td><b>${g.score}</b> / ${g.total}</td>
+      <td>${g.pct}%<span class="mini-bar"><span style="width:${g.pct}%"></span></span></td>
+      <td>${g.blank || "—"}</td>
+      <td>${row.atDate ? fmtDate(row.atDate) : "—"}</td>
+      <td>${mins !== null ? mins + " د" : "—"}</td></tr>`;
+  });
+  h += "</tbody></table></div>";
+
+  /* --- أصعب الأسئلة --- */
+  const perQ = key.map(k => {
+    const right = graded.filter(({ g }) => g.detail.find(d => d.n === k.n)?.ok).length;
+    return { n: k.n, s: k.s, right, pct: Math.round(right / graded.length * 100) };
+  }).sort((a, b) => a.pct - b.pct);
+
+  h += `<div class="tw" style="margin-top:22px"><table>
+    <caption>نسبة الإجابات الصحيحة لكل سؤال — ابدأ المراجعة من أول سطر</caption>
+    <thead><tr><th>السؤال</th><th>الحصة</th><th>صح</th><th>النسبة</th></tr></thead><tbody>`;
+  perQ.forEach(q => {
+    h += `<tr><td>سؤال ${q.n}</td><td>حصة ${q.s}</td>
+      <td>${q.right} / ${graded.length}</td>
+      <td>${q.pct}%<span class="mini-bar"><span style="width:${q.pct}%"></span></span></td></tr>`;
+  });
+  return h + "</tbody></table></div>";
+}
+
+/** تصدير نتائج الاختبار CSV. */
+export function examCSV(x, rows, key, gradeFn) {
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const head = ["name", "email", "score", "total", "pct", "blank", "submitted",
+                ...key.map(k => "Q" + k.n)];
+  const lines = [head.map(esc).join(",")];
+  rows.forEach(r => {
+    const g = gradeFn(r);
+    lines.push([
+      r.name, r.email, g.score, g.total, g.pct, g.blank,
+      r.atDate ? r.atDate.toISOString() : "",
+      ...g.detail.map(d => (d.given === null ? "" : d.ok ? "1" : "0"))
+    ].map(esc).join(","));
+  });
+  return "﻿" + lines.join("\r\n");
+}

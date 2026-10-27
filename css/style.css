@@ -775,3 +775,133 @@ a.link-btn.lab-link{text-decoration:none; font-weight:600; color:var(--tealink);
   border:1px dashed var(--line2); background:var(--card2); color:var(--ink3);
   font-size:13px; cursor:default;}
 .att-pending td{opacity:.72;}
+
+/* ================= الاختبارات أونلاين ================= */
+.xgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px;}
+.xcard{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+.xcard.open{border-color:var(--grn); background:var(--grnsoft);}
+.xcard.done{border-color:var(--teal); background:var(--tealsoft);}
+.xcard.wait{border-color:var(--saf); background:var(--safsoft);}
+.xcard.idle{border-style:dashed;}
+.xc-head{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start;}
+.xc-mark{width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
+  background:var(--card); border:1px solid var(--line2); color:var(--teal);
+  font-family:"Noto Kufi Arabic",sans-serif; font-weight:700; font-size:17px;}
+.xcard.open .xc-mark{background:var(--grn); border-color:var(--grn); color:var(--card);}
+.xcard.done .xc-mark{background:var(--teal); border-color:var(--teal); color:var(--card);}
+.xc-head h3{font-size:16px;}
+.xc-sub{font-size:12.5px; color:var(--ink3); margin:4px 0 0;}
+.xc-chips{display:flex; gap:6px; flex-wrap:wrap; margin:13px 0 11px;}
+.xc-msg{font-size:13.5px; color:var(--ink2); margin:0;}
+.xcard.open .xc-msg, .xcard.done .xc-msg, .xcard.wait .xc-msg{color:inherit;}
+.xc-act{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
+.xc-act .gbtn{width:auto; padding:9px 20px;}
+
+/* --- ترويسة الورقة --- */
+.xpaper-head{border:2px solid var(--ink); border-radius:12px; padding:20px 22px; margin-bottom:20px;
+  text-align:center; background:var(--card);}
+.xph-eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink3);
+  letter-spacing:.04em; margin-bottom:7px;}
+.xpaper-head h2{font-size:21px;}
+.xpaper-head p{font-size:13px; color:var(--ink3); margin:7px 0 0;}
+.xph-meta{display:flex; gap:7px 20px; flex-wrap:wrap; justify-content:center; margin-top:14px;
+  padding-top:13px; border-top:1px dashed var(--line2); font-size:12.5px; color:var(--ink2);}
+.xph-meta b{font-family:"IBM Plex Mono",monospace;}
+
+.xrules ul{margin:0; padding-inline-start:20px;}
+.xrules li{font-size:13.5px;}
+.xprev-note{font-size:13.5px;}
+
+/* --- العدّاد وشريط التقدّم --- */
+.xtimer{font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:600;
+  padding:5px 13px; border-radius:7px; background:var(--tealsoft); color:var(--tealink);
+  border:1px solid var(--teal); direction:ltr; unicode-bidi:isolate;}
+.xtimer.warn{background:var(--safsoft); color:var(--saf); border-color:var(--saf);}
+.xtimer.danger{background:var(--claysoft); color:var(--clay); border-color:var(--clay);
+  animation:xpulse 1s ease-in-out infinite;}
+@keyframes xpulse{50%{opacity:.5}}
+.xprog{position:sticky; top:0; z-index:3; background:var(--paper); padding:9px 0 11px;
+  font-size:12.5px; color:var(--ink3); display:flex; align-items:center; gap:10px;}
+.xprog .xp-bar{flex:1; height:6px; background:var(--card); border:1px solid var(--line);
+  border-radius:99px; overflow:hidden;}
+.xprog .xp-bar span{display:block; height:100%; background:var(--grn); transition:width .2s;}
+.xprog .xp-n{font-family:"IBM Plex Mono",monospace; font-weight:600; color:var(--ink2);}
+
+/* --- عنوان القسم --- */
+.xsec{display:grid; grid-template-columns:1fr auto; gap:3px 14px; align-items:baseline;
+  background:var(--ink); color:var(--paper); border-radius:9px; padding:11px 17px; margin:26px 0 13px;}
+.xsec-t{font-family:"Noto Kufi Arabic",sans-serif; font-weight:600; font-size:15px;}
+.xsec-l{grid-column:1; font-size:13px; opacity:.85;}
+.xsec-m{grid-row:1 / span 2; font-family:"IBM Plex Mono",monospace; font-size:12px; opacity:.8;}
+
+/* --- السؤال --- */
+.xq{background:var(--card); border:1px solid var(--line); border-radius:10px;
+  padding:15px 18px; margin-bottom:10px;}
+.xq.ok{border-color:var(--grn);}
+.xq.bad{border-color:var(--clay);}
+.xq.blank{border-style:dashed; border-color:var(--saf);}
+.xq-h{display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:baseline; margin-bottom:11px;}
+.xq-n{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+  width:24px; height:24px; border-radius:6px; display:grid; place-items:center;
+  background:var(--card2); border:1px solid var(--line2); color:var(--ink2);}
+.xq.ok .xq-n{background:var(--grn); border-color:var(--grn); color:var(--card);}
+.xq.bad .xq-n{background:var(--clay); border-color:var(--clay); color:var(--card);}
+.xq-t{font-size:15px; font-weight:500; line-height:1.75;}
+
+.xopts{display:grid; gap:6px;}
+.xopt{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+  text-align:start; font:inherit; font-size:14px; color:var(--ink2);
+  background:var(--card2); border:1px solid var(--line); border-radius:8px; padding:9px 13px;}
+.xopt.live{cursor:pointer;}
+.xopt.live:hover{border-color:var(--teal); background:var(--card);}
+.xo-l{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600; color:var(--teal);
+  width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+  background:var(--card); border:1px solid var(--line2);}
+.xopt.mine{background:var(--tealsoft); border-color:var(--teal); color:var(--tealink); font-weight:500;}
+.xopt.mine .xo-l{background:var(--teal); border-color:var(--teal); color:var(--card);}
+.xopt.right{background:var(--grnsoft); border-color:var(--grn); color:var(--grn); font-weight:600;}
+.xopt.right .xo-l{background:var(--grn); border-color:var(--grn); color:var(--card);}
+.xopt.wrong{background:var(--claysoft); border-color:var(--clay); color:var(--clay); font-weight:500;}
+.xopt.wrong .xo-l{background:var(--clay); border-color:var(--clay); color:var(--card);}
+.xo-f{font-size:10.5px; font-family:"IBM Plex Mono",monospace; padding:2px 8px; border-radius:20px;
+  background:var(--grn); color:var(--card); white-space:nowrap;}
+.xo-f.bad{background:var(--clay);}
+
+.xwhy{margin-top:12px; background:var(--card2); border-inline-start:3px solid var(--teal);
+  border-radius:0 8px 8px 0; padding:10px 14px; font-size:13.5px; color:var(--ink2); position:relative;}
+.xwhy b{color:var(--teal);}
+.xwhy-s{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  color:var(--ink3); margin-inline-start:8px;}
+.xblank{margin-top:9px; font-size:12.5px; color:var(--saf); font-weight:600;}
+
+/* --- الدرجة --- */
+.xscore{display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:center;
+  border-radius:12px; padding:18px 22px; margin-bottom:20px; border:1px solid var(--line2);}
+.xscore.pass{background:var(--grnsoft); border-color:var(--grn);}
+.xscore.fail{background:var(--claysoft); border-color:var(--clay);}
+.xs-n{font-family:"IBM Plex Mono",monospace; font-size:40px; font-weight:600; line-height:1;}
+.xs-n span{font-size:19px; opacity:.6;}
+.xscore.pass .xs-n{color:var(--grn);} .xscore.fail .xs-n{color:var(--clay);}
+.xs-t{font-family:"Noto Kufi Arabic",sans-serif; font-weight:600; font-size:17px;}
+.xscore.pass .xs-t{color:var(--grn);} .xscore.fail .xs-t{color:var(--clay);}
+.xs-s{font-size:12.5px; color:var(--ink2); margin-top:3px;}
+
+.xfoot{margin-top:26px; padding-top:20px; border-top:2px dashed var(--line2); text-align:center;}
+.xfoot p{font-size:13.5px; color:var(--ink2);}
+.xfoot .gbtn{width:auto; padding:11px 34px; margin-top:6px;}
+.sv-of{font-size:15px; opacity:.55;}
+
+@media (max-width:560px){
+  .xgrid{grid-template-columns:1fr;}
+  .xsec{grid-template-columns:1fr;}
+  .xsec-m{grid-row:auto;}
+  .xopt{grid-template-columns:auto 1fr;}
+  .xo-f{grid-column:2; justify-self:start;}
+  .xs-n{font-size:32px;}
+}
+
+@media print{
+  .xpaper-head{break-inside:avoid;}
+  .xq{break-inside:avoid;}
+  .xopt{background:#fff !important;}
+}

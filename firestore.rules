@@ -229,6 +229,55 @@ service cloud.firestore {
       allow write: if isTeacher();
     }
 
+    // ---------- الاختبارات أونلاين ----------
+    // الطالب يقرأ الاختبار المفتوح فقط — ووثيقة الاختبار لا تحتوي
+    // الإجابات الصحيحة إطلاقًا، فمفيش طريقة يعرف بها الحل وهو بيحل.
+    // نموذج الإجابة في examKeys (المدرس وحده)، ولا يُنشر للطلبة إلا
+    // عند عرض النتائج عبر الحقل keyPayload.
+    function examIsOpen(eid) {
+      return exists(/databases/$(database)/documents/exams/$(eid))
+          && get(/databases/$(database)/documents/exams/$(eid)).data.open == true;
+    }
+
+    match /exams/{eid} {
+      allow read: if isTeacher();
+      allow read: if isAllowed() && resource.data.open == true;
+
+      // المدرس يفتح ويقفل ويعرض النتائج فقط — الأسئلة تُرفع من seed-exam.js
+      allow update: if isTeacher()
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['open','showResults','keyPayload']);
+
+      allow create, delete: if false;
+    }
+
+    // ---------- نموذج الإجابة ----------
+    match /examKeys/{eid} {
+      allow read, write: if isTeacher();
+    }
+
+    // ---------- أوراق الطلبة ----------
+    // إنشاء فقط من الطالب، والمعرّف = examId_uid فالتسليم مرة واحدة
+    // ولا يمكن التعديل بعده. التصحيح والدرجة من المدرس.
+    match /examSubmissions/{sid} {
+      allow read: if isTeacher();
+      // resource == null يعني أن الورقة غير موجودة — والطالب يسأل عنها
+      // ليعرف هل سلّم أم لا، ولا يتسرّب بذلك شيء.
+      allow get:  if isAllowed() && (resource == null || resource.data.uid == request.auth.uid);
+      allow read: if isAllowed() && resource.data.uid == request.auth.uid;
+
+      allow create: if isAllowed()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == mail()
+                    && request.resource.data.by == 'student'
+                    && examIsOpen(request.resource.data.examId)
+                    && request.resource.data.keys().hasOnly(
+                         ['uid','email','name','examId','term','answers','ms','at','by']);
+
+      // المدرس يصحّح ويكتب الدرجة أو يحذف ورقة
+      allow list, update, delete: if isTeacher();
+    }
+
     // ---------- كل ما عدا ذلك: ممنوع ----------
     match /{document=**} {
       allow read, write: if false;

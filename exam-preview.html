@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>معاينة ورقة الاختبار</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css?v=10">
+<style>
+  body{margin:0; background:var(--paper);}
+  .wrap{max-width:860px; margin:0 auto; padding:18px;}
+  .modes{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="modes no-print">
+    <button class="tbtn" data-m="take">وضع الحل</button>
+    <button class="tbtn" data-m="preview">معاينة المدرس</button>
+    <button class="tbtn" data-m="review">ورقة مصحَّحة</button>
+    <button class="tbtn" data-m="cards">بطاقات الاختبارات</button>
+  </div>
+  <div id="out">جارٍ التحميل…</div>
+</div>
+
+<script type="module">
+import { renderExamPaper, renderExams } from "./js/render.js";
+import exam from "./seed/exam-u1u2.js";
+
+/* نفس تسطيح seed-exam.js — عشان المعاينة تطابق المرفوع */
+const TF = ["صح", "خطأ"];
+const qs = [], key = [];
+exam.sections.forEach((sec, si) => {
+  sec.qs.forEach(q => {
+    const n = qs.length + 1;
+    qs.push({ n, sec: si, type: sec.type, t: q.t, o: sec.type === "tf" ? TF.slice() : q.o, marks: 1, s: q.s });
+    key.push({ n, a: q.a, why: q.why, s: q.s });
+  });
+});
+const X = {
+  ...exam, qs, count: qs.length, total: qs.length, open: true, showResults: true,
+  sections: exam.sections.map((s, i) => ({ i, t: s.t, lead: s.lead, type: s.type, n: s.qs.length, marks: s.qs.length })),
+  keyPayload: JSON.stringify(key)
+};
+
+// إجابات وهمية: الصح في الأسئلة الفردية، غلط في الزوجية، وسؤالان فاضيان
+const fake = {};
+key.forEach(k => {
+  if (k.n % 7 === 0) return;
+  fake[k.n] = k.n % 2 ? k.a : (k.a + 1) % X.qs.find(q => q.n === k.n).o.length;
+});
+let score = 0;
+const detail = key.map(k => {
+  const ok = fake[k.n] === k.a;
+  if (ok) score++;
+  return { n: k.n, ok, given: fake[k.n] ?? null };
+});
+const grade = { score, total: key.length, pct: Math.round(score / key.length * 100),
+                detail, blank: detail.filter(d => d.given === null).length };
+
+const out = document.getElementById("out");
+function show(m) {
+  if (m === "cards") {
+    out.innerHTML =
+      renderExams([X, { ...X, id: "x2", open: false, title: "اختبار الوحدة الثالثة", showResults: false }],
+                  { isTeacher: true, counts: new Map([[X.id, 12]]) }) +
+      renderExams([X], { isTeacher: false, mySubs: new Map() });
+    return;
+  }
+  // ?s=1 يعرض القسم الثاني وحده — للفحص السريع أثناء التطوير
+  const only = new URLSearchParams(location.search).get("s");
+  const XX = only === null ? X : {
+    ...X,
+    sections: X.sections.filter(s => s.i === +only),
+    qs: X.qs.filter(q => q.sec === +only)
+  };
+  out.innerHTML = renderExamPaper(XX, {
+    mode: m,
+    answers: m === "take" ? { 1: 1, 2: 0, 3: 2 } : fake,
+    key: m === "take" ? [] : key,
+    name: "أحمد محمد عبد الله",
+    grade: m === "review" ? grade : null
+  });
+}
+document.querySelectorAll("[data-m]").forEach(b =>
+  b.addEventListener("click", () => show(b.dataset.m)));
+show(new URLSearchParams(location.search).get("m") || "preview");
+</script>
+</body>
+</html>

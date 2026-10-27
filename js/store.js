@@ -278,6 +278,115 @@ export function deletePayment(pid) {
   return deleteDoc(doc(db, "payments", pid));
 }
 
+/* ---------------- الاختبارات أونلاين ---------------- */
+
+/** يفكّ حزمة الأسئلة المخزّنة كنص JSON. */
+function parseExam(d, id) {
+  let qs = [];
+  try { qs = JSON.parse(d.payload || "[]"); } catch { qs = []; }
+  return { ...d, id, qs };
+}
+
+/**
+ * يجلب اختبارات المسار الحالي.
+ * المدرس يطلب الكل، والطالب المفتوح فقط — والقاعدة تُطبَّق على الخادم،
+ * فأسئلة الاختبار المقفول لا تصل جهاز الطالب إطلاقًا.
+ */
+export async function loadExams(isTeacher) {
+  const col = collection(db, "exams");
+  const snap = await getDocs(isTeacher ? col : query(col, where("open", "==", true)));
+  return snap.docs
+    .map(d => parseExam(d.data(), d.id))
+    .filter(e => (e.term || "term1") === termKey())
+    .sort((a, b) => (a.from || 0) - (b.from || 0));
+}
+
+/** نموذج الإجابة — المدرس وحده يقدر يقراه. */
+export async function loadExamKey(examId) {
+  const snap = await getDoc(doc(db, "examKeys", examId));
+  if (!snap.exists()) return [];
+  try { return JSON.parse(snap.data().payload || "[]"); } catch { return []; }
+}
+
+/** المدرس يفتح أو يقفل الاختبار. */
+export function setExamFlag(examId, field, value) {
+  if (field !== "open" && field !== "showResults") return Promise.reject(new Error("bad-field"));
+  return updateDoc(doc(db, "exams", examId), { [field]: !!value });
+}
+
+/**
+ * عرض النتائج: يكتب نموذج الإجابة داخل وثيقة الاختبار نفسها
+ * ليراه الطلبة مع التعليل. قبل كده الإجابات في examKeys وحدها
+ * والطالب لا يقدر يقراها، فاستحالة يعرف الحل وهو بيحل.
+ */
+export function publishResults(examId, key, show) {
+  return updateDoc(doc(db, "exams", examId), {
+    showResults: !!show,
+    keyPayload: show ? JSON.stringify(key) : ""
+  });
+}
+
+/** ورقة الطالب الحالي في اختبار معيّن — إن كان سلّم. */
+export async function loadMySubmission(examId, uid) {
+  try {
+    const snap = await getDoc(doc(db, "examSubmissions", `${examId}_${uid}`));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch { return null; }
+}
+
+/** كل أوراق الطلبة في اختبار معيّن — للمدرس. */
+export async function loadSubmissions(examId) {
+  const snap = await getDocs(query(collection(db, "examSubmissions"), where("examId", "==", examId)));
+  return snap.docs.map(d => ({
+    id: d.id, ...d.data(),
+    atDate: d.data().at?.toDate?.() || null
+  }));
+}
+
+/**
+ * الطالب يسلّم ورقته. إنشاء فقط — لا تعديل ولا حذف،
+ * ولأن المعرّف = examId_uid فالتسليم مرة واحدة لا يتكرر.
+ * الإجابات تُخزَّن كنص JSON ("3":1) والتصحيح عند المدرس،
+ * فنموذج الإجابة لا ينزل جهاز الطالب أصلًا.
+ */
+export function submitExam(examId, user, name, answers, ms) {
+  return setDoc(doc(db, "examSubmissions", `${examId}_${user.uid}`), {
+    uid: user.uid,
+    email: (user.email || "").toLowerCase(),
+    name: String(name || "").trim(),
+    examId,
+    term: termKey(),
+    answers: JSON.stringify(answers),
+    ms: Number(ms) || 0,
+    at: serverTimestamp(),
+    by: "student"
+  });
+}
+
+/** يصحّح ورقة واحدة بمقارنتها بنموذج الإجابة. */
+export function gradeSubmission(sub, key) {
+  let ans = {};
+  try { ans = JSON.parse(sub.answers || "{}"); } catch {}
+  let score = 0;
+  const detail = key.map(k => {
+    const given = ans[k.n];
+    const ok = given !== undefined && given !== null && Number(given) === k.a;
+    if (ok) score++;
+    return { n: k.n, a: k.a, given: given === undefined ? null : Number(given), ok, s: k.s };
+  });
+  const total = key.length || 1;
+  return { score, total, pct: Math.round(score / total * 100), detail, blank: detail.filter(d => d.given === null).length };
+}
+
+/** المدرس يكتب الدرجة في ورقة الطالب حتى يراها بعد عرض النتائج. */
+export function saveScore(subId, score, total) {
+  return updateDoc(doc(db, "examSubmissions", subId), {
+    score: Number(score),
+    total: Number(total),
+    gradedAt: serverTimestamp()
+  });
+}
+
 /* ---------------- تقدّم الطالب ---------------- */
 
 export async function loadProgress(uid) {

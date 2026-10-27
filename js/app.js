@@ -14,13 +14,16 @@ import {
   loadBillingConfig, saveBillingConfig, billingState,
   loadMyPayments, claimPayment, loadAllPayments, setPaymentStatus, deletePayment,
   loadAttendanceOpen, watchAttendanceOpen, setAttendanceOpen, checkIn, setAttendance,
-  loadMyAttendance, loadAllAttendance
+  loadMyAttendance, loadAllAttendance,
+  loadExams, loadExamKey, setExamFlag, publishResults, loadMySubmission,
+  loadSubmissions, submitExam, gradeSubmission, saveScore
 } from "./store.js";
 import { wireTrackSwitch, track } from "./track.js";
 import {
   UNITS, renderSession, renderLocked, renderSearch, renderBank, renderStudents, renderAdmin, renderRelease,
   renderBilling, billingBanner, claimFormHTML,
   attendanceCard, attendanceToggle, renderAttendance, attendanceCSV,
+  renderExams, renderExamPaper, renderExamResults, examCSV, examBanner,
   buildIndex, search, studentsCSV, escapeHTML, joinFormHTML, pendingHTML
 } from "./render.js";
 
@@ -35,7 +38,9 @@ const state = {
   sessions: [],
   index: [],
   progress: { completed: [], lastSession: 1 },
-  view: "session",        // session | search | bank | students | admin | release | billing | attendance
+  // session | search | bank | students | admin | release | billing | attendance
+  // | exams | exam | examResults
+  view: "session",
   current: 1,
   teacherMode: false,
   answersOpen: false,
@@ -93,7 +98,9 @@ addEventListener("resize", () => { if (!isMobile()) drawer(false); });
 /** يحدّث عنوان الشريط العلوي على الموبايل. */
 function setMobileTitle() {
   const map = { search: "نتائج البحث", bank: "بنك الأسئلة",
-                students: "متابعة الطلبة", admin: "طلبات الانضمام", release: "الحصص المتاحة", billing: "الاشتراكات", attendance: "كشف الحضور" };
+                students: "متابعة الطلبة", admin: "طلبات الانضمام", release: "الحصص المتاحة",
+                billing: "الاشتراكات", attendance: "كشف الحضور", exams: "الاختبارات",
+                exam: examState.cur?.title || "الاختبار", examResults: "نتائج الاختبار" };
   if (state.view === "session") {
     const s = state.sessions.find(x => x.n === state.current);
     el.mtitle.textContent = s ? `حصة ${s.n} · ${s.rev ? s.ref : s.title}` : "المذكرة";
@@ -363,6 +370,8 @@ function draw() {
     } else {
       banner = attendanceCard(s, state.attOpen === s.id,
                               state.myAtt.find(r => r.sessionId === s.id)) + banner;
+      // الاختبار المفتوح يظهر أعلى أي حصة يفتحها الطالب، فمحدش يفوته
+      banner = examBanner(pendingExam()) + banner;
     }
     el.main.innerHTML = banner + renderSession(s, {
       isTeacher: state.role === "teacher",
@@ -423,6 +432,40 @@ function draw() {
     }
     el.main.innerHTML = renderBilling(state.billing || {}, state.allPayments,
                                       state.students, releasedCount());
+  } else if (state.view === "exams") {
+    if (!examState.list) {
+      el.main.innerHTML = '<div class="empty">جارٍ تحميل الاختبارات…</div>';
+      fetchExams()
+        .then(() => { if (state.view === "exams") draw(); })
+        .catch(e => {
+          el.main.innerHTML = `<div class="empty">تعذّر التحميل: ${escapeHTML(e.code || e.message)}</div>`;
+        });
+      return;
+    }
+    el.main.innerHTML = renderExams(examState.list, {
+      isTeacher: state.role === "teacher",
+      mySubs: examState.mySubs,
+      counts: examState.counts
+    });
+  } else if (state.view === "exam") {
+    if (!examState.cur) { state.view = "exams"; draw(); return; }
+    el.main.innerHTML = renderExamPaper(examState.cur, {
+      mode: examState.mode,
+      answers: examState.answers,
+      key: examState.key,
+      name: examState.mode === "take" || examState.mode === "review" ? state.name : "",
+      grade: examState.mode === "review"
+        ? gradeSubmission(examState.mySubs.get(examState.cur.id) || {}, examState.key)
+        : null
+    });
+    if (examState.mode === "take") { refreshExamProgress(); startTimer(); }
+    else stopTimer();
+  } else if (state.view === "examResults") {
+    if (!examState.cur) { state.view = "exams"; draw(); return; }
+    el.main.innerHTML = renderExamResults(examState.cur, examState.subs, examState.key, {
+      grade: r => gradeSubmission(r, examState.key),
+      learners: (state.students || []).filter(s => s.role === "student" && s.active !== false).length || null
+    });
   } else if (state.view === "release") {
     el.main.innerHTML = renderRelease(state.sessions);
   } else if (state.view === "admin") {
@@ -485,6 +528,7 @@ el.main.addEventListener("click", ev => {
   if (!a) return;
 
   if (attendanceAction(a)) return;
+  if (examAction(a)) return;
   if (billingAction(a)) return;
   if (adminAction(a)) return;
 
@@ -614,6 +658,316 @@ function attendanceAction(a) {
 }
 
 /* ---------------- أفعال الاشتراك ---------------- */
+
+/* ---------------- الاختبارات أونلاين ---------------- */
+
+const examState = {
+  list:   null,         // كل اختبارات المسار
+  mySubs: new Map(),    // examId ← ورقة الطالب الحالي
+  counts: new Map(),    // examId ← عدد من سلّم (للمدرس)
+  cur:    null,         // الاختبار المعروض
+  mode:   "take",       // take | review | preview
+  answers: {},
+  key:    [],
+  subs:   [],
+  deadline: 0,
+  timer:  null
+};
+
+const draftKey = id => `memo:exam:${id}`;
+
+/** يقرأ مسوّدة الحل المحفوظة محليًا — فإعادة تحميل الصفحة لا تضيّع الإجابات. */
+function readDraft(id) {
+  try {
+    const raw = localStorage.getItem(draftKey(id));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d && typeof d === "object" ? d : null;
+  } catch { return null; }
+}
+
+function writeDraft(id, data) {
+  try { localStorage.setItem(draftKey(id), JSON.stringify(data)); } catch {}
+}
+
+function clearDraft(id) {
+  try { localStorage.removeItem(draftKey(id)); } catch {}
+}
+
+/** يجلب قائمة الاختبارات وحالة كل واحد منها. */
+async function fetchExams() {
+  const isT = state.role === "teacher";
+  const list = await loadExams(isT);
+  examState.list = list;
+
+  if (isT) {
+    const counts = await Promise.all(list.map(x =>
+      loadSubmissions(x.id).then(r => r.length).catch(() => 0)));
+    examState.counts = new Map(list.map((x, i) => [x.id, counts[i]]));
+  } else {
+    const subs = await Promise.all(list.map(x => loadMySubmission(x.id, state.user.uid)));
+    examState.mySubs = new Map(list.map((x, i) => [x.id, subs[i]]).filter(([, s]) => s));
+  }
+  return list;
+}
+
+/** أول اختبار مفتوح لم يسلّمه الطالب — يُستخدم للشريط أعلى الحصة. */
+function pendingExam() {
+  if (state.role === "teacher" || !examState.list) return null;
+  return examState.list.find(x => x.open && !examState.mySubs.get(x.id)) || null;
+}
+
+/* --- العدّاد --- */
+
+function stopTimer() {
+  clearInterval(examState.timer);
+  examState.timer = null;
+}
+
+function tickTimer() {
+  const box = document.getElementById("xtimer");
+  if (!box) return stopTimer();
+  const left = Math.max(0, examState.deadline - Date.now());
+  const m = Math.floor(left / 60000);
+  const s = Math.floor(left % 60000 / 1000);
+  box.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  box.classList.toggle("warn", left <= 600000 && left > 120000);
+  box.classList.toggle("danger", left <= 120000);
+  if (left <= 0) {
+    stopTimer();
+    // انتهى الزمن: تسليم آلي بما تم حلّه حتى لا تضيع المجهود
+    doSubmitExam(true);
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  tickTimer();
+  examState.timer = setInterval(tickTimer, 1000);
+}
+
+/** يحدّث شريط «حلّيت كام سؤال» بدون إعادة رسم الورقة. */
+function refreshExamProgress() {
+  const box = document.getElementById("xprog");
+  if (!box || !examState.cur) return;
+  const total = examState.cur.count;
+  const done = Object.keys(examState.answers).length;
+  box.innerHTML = `<span class="xp-n">${done} / ${total}</span>
+    <span class="xp-bar"><span style="width:${total ? done / total * 100 : 0}%"></span></span>
+    <span>${done === total ? "جاوبت على كل الأسئلة ✓" : `باقي ${total - done} سؤال`}</span>`;
+}
+
+/* --- فتح الورقة --- */
+
+function openExamPaper(x, mode, extra = {}) {
+  examState.cur = x;
+  examState.mode = mode;
+  examState.answers = extra.answers || {};
+  examState.key = extra.key || [];
+  state.view = "exam";
+
+  if (mode === "take") {
+    const d = readDraft(x.id);
+    const now = Date.now();
+    // الموعد النهائي يُحفظ محليًا، فإعادة التحميل لا تعطي الطالب وقتًا إضافيًا
+    examState.deadline = d?.deadline && d.deadline > now ? d.deadline : now + x.mins * 60000;
+    examState.answers = d?.answers || {};
+    writeDraft(x.id, { deadline: examState.deadline, answers: examState.answers });
+  }
+
+  drawer(false);
+  draw();
+  window.scrollTo(0, 0);
+}
+
+/** تسليم الورقة. auto = التسليم تلقائي بانتهاء الزمن. */
+function doSubmitExam(auto = false) {
+  const x = examState.cur;
+  if (!x || examState.mode !== "take") return;
+  const done = Object.keys(examState.answers).length;
+
+  if (!auto) {
+    const miss = x.count - done;
+    const ok = confirm(miss
+      ? `لسه ${miss} سؤال بدون إجابة، والسؤال الفاضي يُحسب غلط.\nتسلّم الورقة كده؟`
+      : "تسلّم الورقة؟ مش هتقدر تعدّل بعد كده.");
+    if (!ok) return;
+  }
+
+  stopTimer();
+  const ms = x.mins * 60000 - Math.max(0, examState.deadline - Date.now());
+  const btns = el.main.querySelectorAll('[data-act="exam-submit"]');
+  btns.forEach(b => { b.disabled = true; b.textContent = "جارٍ التسليم…"; });
+
+  submitExam(x.id, state.user, state.name, examState.answers, ms)
+    .then(() => loadMySubmission(x.id, state.user.uid))
+    .then(sub => {
+      if (sub) examState.mySubs.set(x.id, sub);
+      clearDraft(x.id);
+      examState.cur = null;
+      state.view = "exams";
+      draw();
+      window.scrollTo(0, 0);
+      alert(auto
+        ? "انتهى الزمن، واتسلّمت ورقتك بالإجابات اللي حلّيتها."
+        : "تمّ تسليم ورقتك. النتيجة هتظهر لما المدرس يعرضها.");
+    })
+    .catch(e => {
+      const err = document.getElementById("xErr");
+      const msg = e.code === "permission-denied"
+        ? "الاختبار اتقفل أو إنت سلّمت ورقتك قبل كده."
+        : "تعذّر التسليم: " + (e.code || e.message);
+      if (err) { err.textContent = msg; err.hidden = false; } else alert(msg);
+      btns.forEach(b => { b.disabled = false; b.textContent = "سلّم الاختبار"; });
+      if (examState.deadline > Date.now()) startTimer();
+    });
+}
+
+/** أفعال الاختبارات. يرجع true لو تعامل مع الحدث. */
+function examAction(a) {
+  const act = a.dataset.act;
+  const ACTS = ["exam-start", "exam-pick", "exam-submit", "exam-back", "exam-review",
+                "exam-preview", "exam-open", "exam-close", "exam-results",
+                "exam-show-results", "exam-hide-results", "exam-refresh", "exam-csv"];
+  if (!ACTS.includes(act)) return false;
+
+  const byId = id => (examState.list || []).find(x => x.id === id);
+  const fail = e => alert("تعذّر التنفيذ: " + (e.code || e.message));
+  const isT = state.role === "teacher";
+
+  switch (act) {
+    /* --- الطالب --- */
+    case "exam-start": {
+      const x = byId(a.dataset.id);
+      if (!x || !x.open) return true;
+      openExamPaper(x, "take");
+      return true;
+    }
+    case "exam-pick": {
+      if (examState.mode !== "take") return true;
+      const n = Number(a.dataset.n), i = Number(a.dataset.i);
+      examState.answers[n] = i;
+      writeDraft(examState.cur.id, { deadline: examState.deadline, answers: examState.answers });
+      // نعدّل الخانات في مكانها بدل إعادة الرسم، فالصفحة ما تقفزش
+      a.closest(".xopts").querySelectorAll(".xopt").forEach(o => {
+        const on = o === a;
+        o.classList.toggle("mine", on);
+        o.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      refreshExamProgress();
+      return true;
+    }
+    case "exam-submit":
+      doSubmitExam(false);
+      return true;
+    case "exam-review": {
+      const x = byId(a.dataset.id);
+      const sub = examState.mySubs.get(a.dataset.id);
+      if (!x || !sub) return true;
+      let key = [];
+      try { key = JSON.parse(x.keyPayload || "[]"); } catch {}
+      let answers = {};
+      try { answers = JSON.parse(sub.answers || "{}"); } catch {}
+      openExamPaper(x, "review", { answers, key });
+      return true;
+    }
+    case "exam-back":
+      stopTimer();
+      if (examState.mode === "take" && !confirm("تسيب الورقة وترجع؟ إجاباتك محفوظة والعدّاد مستمر.")) {
+        startTimer();
+        return true;
+      }
+      examState.cur = null;
+      state.view = "exams";
+      draw();
+      window.scrollTo(0, 0);
+      return true;
+
+    /* --- المدرس --- */
+    case "exam-preview": {
+      if (!isT) return true;
+      const x = byId(a.dataset.id);
+      if (!x) return true;
+      a.disabled = true;
+      a.textContent = "جارٍ التحميل…";
+      loadExamKey(x.id)
+        .then(key => openExamPaper(x, "preview", { key }))
+        .catch(e => { fail(e); a.disabled = false; a.textContent = "راجع الأسئلة"; });
+      return true;
+    }
+    case "exam-open":
+    case "exam-close": {
+      if (!isT) return true;
+      const open = act === "exam-open";
+      if (open && !confirm("تفتح الاختبار؟ هيظهر فورًا في صفحات كل الطلبة المسجّلين.")) return true;
+      a.disabled = true;
+      setExamFlag(a.dataset.id, "open", open)
+        .then(() => { examState.list = null; draw(); })
+        .catch(e => { fail(e); a.disabled = false; });
+      return true;
+    }
+    case "exam-results":
+    case "exam-refresh": {
+      if (!isT) return true;
+      const x = byId(a.dataset.id);
+      if (!x) return true;
+      a.disabled = true;
+      Promise.all([loadExamKey(x.id), loadSubmissions(x.id)])
+        .then(([key, subs]) => {
+          examState.cur = x;
+          examState.key = key;
+          examState.subs = subs;
+          examState.counts.set(x.id, subs.length);
+          state.view = "examResults";
+          draw();
+          window.scrollTo(0, 0);
+        })
+        .catch(e => { fail(e); a.disabled = false; });
+      return true;
+    }
+    case "exam-show-results":
+    case "exam-hide-results": {
+      if (!isT) return true;
+      const show = act === "exam-show-results";
+      const x = examState.cur;
+      if (!x) return true;
+      if (show && !confirm("تعرض النتائج؟ كل طالب هيشوف درجته وورقته مصحَّحة بنموذج الإجابة.")) return true;
+      a.disabled = true;
+      a.textContent = "جارٍ التنفيذ…";
+      // نكتب درجة كل ورقة أولًا ثم ننشر نموذج الإجابة — فالطالب
+      // لا يرى الحل قبل أن تُثبَّت درجته.
+      const writes = show
+        ? examState.subs.map(s => {
+            const g = gradeSubmission(s, examState.key);
+            return saveScore(s.id, g.score, g.total).catch(() => {});
+          })
+        : [];
+      Promise.all(writes)
+        .then(() => publishResults(x.id, examState.key, show))
+        .then(() => {
+          examState.cur = { ...x, showResults: show };
+          examState.list = null;
+          return loadSubmissions(x.id);
+        })
+        .then(subs => { examState.subs = subs; draw(); })
+        .catch(e => { fail(e); a.disabled = false; });
+      return true;
+    }
+    case "exam-csv": {
+      if (!isT || !examState.cur) return true;
+      const csv = examCSV(examState.cur, examState.subs, examState.key,
+                          r => gradeSubmission(r, examState.key));
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `exam-${examState.cur.id}.csv`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    }
+  }
+  return false;
+}
 
 /** أفعال شريط الاشتراك وصفحة الاشتراكات. يرجع true لو تعامل مع الحدث. */
 function billingAction(a) {
@@ -959,6 +1313,11 @@ async function boot(user) {
     // نجلب الطلبات في الخلفية عشان يظهر عدّاد المعلّقة فورًا
     loadRequests().then(r => { state.requests = r; updateBadge(); }).catch(() => {});
   }
+
+  // الاختبارات في الخلفية: الشريط أعلى الحصة يحتاج معرفة المفتوح منها
+  fetchExams()
+    .then(() => { if (state.view === "session" || state.view === "exams") draw(); })
+    .catch(() => {});
 
   renderMe();
   renderNav();
