@@ -25,7 +25,8 @@
 
 <script type="module">
 import { renderExamPaper, renderExams } from "./js/render.js";
-import exam from "./seed/exam-u1u2.js";
+const EF = new URLSearchParams(location.search).get("f") || "exam-u1u2.js";
+const exam = (await import("./seed/" + EF)).default;
 
 /* نفس تسطيح seed-exam.js — عشان المعاينة تطابق المرفوع */
 const TF = ["صح", "خطأ"];
